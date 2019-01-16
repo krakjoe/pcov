@@ -1,0 +1,9 @@
+// $Id$
+// vim:ft=javascript
+
+ARG_ENABLE("pcov", "enable php coverage support", "no");
+
+if (PHP_PCOV != "no") {
+	EXTENSION("pcov", "pcov.c", PHP_EXTNAME_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
+}
+
