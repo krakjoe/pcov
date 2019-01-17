@@ -305,9 +305,6 @@ static zend_always_inline zend_bool php_pcov_discover_ignore(zend_uchar opcode) 
 	    opcode == ZEND_DECLARE_INHERITED_CLASS || 
 	    opcode == ZEND_DECLARE_FUNCTION || 
 	    opcode == ZEND_DECLARE_INHERITED_CLASS_DELAYED || 
-	    opcode == ZEND_VERIFY_ABSTRACT_CLASS || 
-	    opcode == ZEND_ADD_TRAIT || 
-	    opcode == ZEND_BIND_TRAITS || 
 	    opcode == ZEND_DECLARE_ANON_CLASS || 
 	    opcode == ZEND_DECLARE_ANON_INHERITED_CLASS || 
 	    opcode == ZEND_FAST_RET || 
@@ -316,6 +313,11 @@ static zend_always_inline zend_bool php_pcov_discover_ignore(zend_uchar opcode) 
 	    opcode == ZEND_EXT_FCALL_BEGIN || 
 	    opcode == ZEND_EXT_FCALL_END || 
 	    opcode == ZEND_EXT_NOP || 
+#if PHP_VERSION_ID >= 70400
+	    opcode == ZEND_VERIFY_ABSTRACT_CLASS || 
+	    opcode == ZEND_ADD_TRAIT || 
+	    opcode == ZEND_BIND_TRAITS || 
+#endif
 	    opcode == ZEND_BIND_GLOBAL
 	;
 } /* }}} */
