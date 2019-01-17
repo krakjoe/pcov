@@ -41,7 +41,6 @@
 #	define GC_ADDREF(g) ++GC_REFCOUNT(g)
 #endif
 
-zend_op_array* (*zend_compile_file_function)(zend_file_handle *, int);
 void (*zend_execute_ex_function)(zend_execute_data *execute_data);
 
 ZEND_DECLARE_MODULE_GLOBALS(pcov)
@@ -119,8 +118,42 @@ static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) {
 	return zend_vm_call_opcode_handler(execute_data);
 }
 
+static zend_always_inline void php_pcov_cache(zend_op_array *result) {
+	zend_op_array *mapped;
+
+	if (!result || !result->filename) {
+		return;
+	}
+
+	if (zend_hash_exists(&PCG(files), result->filename)) {
+		return;
+	}
+	
+	if (!php_pcov_wants(result->filename)) {
+		return;
+		
+	}
+
+	mapped = (zend_op_array*) zend_hash_add_mem(
+				&PCG(files), 
+				result->filename, 
+				result, sizeof(zend_op_array));
+
+	if (mapped->static_variables) {
+		if (!(GC_FLAGS(mapped->static_variables) & IS_ARRAY_IMMUTABLE)) {
+			GC_ADDREF(mapped->static_variables);
+		}
+	}
+
+	mapped->refcount = NULL;
+}
+
 void php_pcov_execute_ex(zend_execute_data *execute_data) {
 	int zrc        = 0;
+
+	if (EX_CALL_INFO() & ZEND_CALL_TOP) {
+		php_pcov_cache((zend_op_array*) EX(func));
+	}
 
 	while (1) {
 		if (EX(opline)->opcode == ZEND_DO_FCALL || 
@@ -145,28 +178,6 @@ void php_pcov_execute_ex(zend_execute_data *execute_data) {
 	}
 }
 
-zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) {
-	zend_op_array* result = zend_compile_file_function(fh, type);	
-
-	if (result && php_pcov_wants(fh->opened_path)) {
-		zend_op_array *mapped  = 
-			(zend_op_array*) zend_hash_add_mem(
-				&PCG(files), 
-				fh->opened_path, 
-				result, sizeof(zend_op_array));
-
-		if (mapped->static_variables) {
-			if (!(GC_FLAGS(mapped->static_variables) & IS_ARRAY_IMMUTABLE)) {
-				GC_ADDREF(mapped->static_variables);
-			}
-		}
-
-		mapped->refcount = NULL;
-	}
-
-	return result;
-}
-
 void php_pcov_files_dtor(zval *zv) {
 	destroy_op_array(Z_PTR_P(zv));
 	efree(Z_PTR_P(zv));
@@ -184,10 +195,7 @@ PHP_MINIT_FUNCTION(pcov)
 
 	if (INI_BOOL("pcov.enabled")) {
 		zend_execute_ex_function   = zend_execute_ex;
-		zend_compile_file_function = zend_compile_file;
-
 		zend_execute_ex            = php_pcov_execute_ex;
-		zend_compile_file          = php_pcov_compile_file;
 	}
 
 	return SUCCESS;
@@ -200,7 +208,6 @@ PHP_MSHUTDOWN_FUNCTION(pcov)
 {
 	if (INI_BOOL("pcov.enabled")) {
 		zend_execute_ex   = zend_execute_ex_function;
-		zend_compile_file = zend_compile_file_function;
 	}
 
 	UNREGISTER_INI_ENTRIES();
