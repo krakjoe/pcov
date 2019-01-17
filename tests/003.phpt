@@ -1,0 +1,16 @@
+--TEST--
+\pcov\collect non array filter
+--SKIPIF--
+<?php if (!extension_loaded("pcov")) print "skip"; ?>
+--INI--
+pcov.enabled = 0
+--FILE--
+<?php
+var_dump(\pcov\collect(\pcov\inclusive, ""));
+?>
+--EXPECTF--
+Fatal error: Uncaught TypeError: Argument 2 passed to pcov\collect() must be of the type array, string given in %s/003.php:2
+Stack trace:
+#0 %s/003.php(2): pcov\collect(1, '')
+#1 {main}
+  thrown in %s/003.php on line 2
