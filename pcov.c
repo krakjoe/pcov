@@ -450,6 +450,10 @@ PHP_NAMED_FUNCTION(php_pcov_collect)
 			zval *filtered;
 			ZEND_HASH_FOREACH_STR_KEY(&PCG(files), name) {
 				ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(filter), filtered) {
+					if (Z_TYPE_P(filtered) != IS_STRING) {
+						continue;
+					}
+
 					if (zend_string_equals(name, Z_STR_P(filtered))) {
 						goto _php_pcov_collect_exclude;
 					}
