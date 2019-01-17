@@ -16,12 +16,12 @@ API
 /*
 * Shall start recording coverage information
 **/
-function \pcov\start(void);
+function \pcov\start(void) : void;
 
 /*
 * Shall stop recording coverage information
 **/
-function \pcov\stop(void);
+function \pcov\stop(void) : void;
 
 /*
 * Shall collect coverage information
@@ -30,14 +30,14 @@ function \pcov\stop(void);
 *		 \pcov\exclusive  shall collect coverage information for all but the specified files
 * @param array   filenames
 */
-function \pcov\collect(int $type = \pcov\all, array $filter = []);
+function \pcov\collect(int $type = \pcov\all, array $filter = []) : array;
 
 /*
 * Shall clear stored coverage information
 * @param set true to clear file cache
 * Note: clearing the file may have surprising consequences
 */
-function \pcov\clear(bool $files = false);
+function \pcov\clear(bool $files = false) : void;
 ```
 
 Configuration
