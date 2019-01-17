@@ -27,6 +27,7 @@
 #include "ext/standard/info.h"
 
 #include "zend_arena.h"
+#include "zend_exceptions.h"
 #include "zend_vm.h"
 #include "zend_vm_opcodes.h"
 
@@ -385,7 +386,7 @@ static zend_always_inline void php_pcov_discover_file(zend_string *file, zval *r
 	zend_hash_update(Z_ARRVAL_P(return_value), file, &discovered);
 } /* }}} */
 
-/* {{{ array \pcov\collect(int $filter = \pcov\all, array $filter = []); */
+/* {{{ array \pcov\collect(int $type = \pcov\all, array $filter = []); */
 PHP_NAMED_FUNCTION(php_pcov_collect)
 {
 	zend_long type = PCOV_FILTER_ALL;
@@ -395,16 +396,14 @@ PHP_NAMED_FUNCTION(php_pcov_collect)
 		return;
 	}
 
-	if (PCOV_FILTER_INCLUDE == type ||
-	    PCOV_FILTER_EXCLUDE == type) {
-		if (Z_TYPE_P(filter) != IS_ARRAY) {
-#if PHP_VERSION_ID <= 70100
-			zend_wrong_parameter_type_error(2, Z_EXPECTED_ARRAY, filter);
-#else
-			zend_wrong_parameter_type_error(1, 2, Z_EXPECTED_ARRAY, filter);
-#endif
-			return;
-		}
+	if (PCOV_FILTER_ALL != type &&
+	    PCOV_FILTER_INCLUDE != type &&
+	    PCOV_FILTER_EXCLUDE != type) {
+		zend_throw_error(zend_ce_type_error, 
+			"type must be "
+				"\\pcov\\inclusive, "
+				"\\pcov\\exclusive, or \\pcov\\all");
+		return;
 	}
 
 	array_init(return_value);
@@ -443,15 +442,6 @@ PHP_NAMED_FUNCTION(php_pcov_collect)
 				php_pcov_discover_file(name, return_value);
 			} ZEND_HASH_FOREACH_END();
 		} break;
-
-		default:
-			zend_throw_error(NULL, 
-				"filter must be "
-					"\\pcov\\inclusive, "
-					"\\pcov\\exclusive, or \\pvoc\\all");
-			zval_ptr_dtor(return_value);
-			ZVAL_NULL(return_value);
-			return;
 	}
 
 	php_pcov_report(PCG(start), return_value);
