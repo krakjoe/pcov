@@ -40,18 +40,24 @@ function \pcov\collect(int $type = \pcov\all, array $filter = []);
 function \pcov\clear(bool $code = false);
 ```
 
-Notes
-=====
+Configuration
+=============
 
-__PCOV is not interoperable with xdebug or phpdbg__
+  * pcov.enabled          (default: 1)      shall enable or disable zend hooks for pcov
+  * pcov.directory        (default: /)      shall restrict collection to a single directory
+  * pcov.initial.memory   (default: 65536)  shall set the initial size of the arena used by pcov
+  * pcov.initial.files    (default: 64)     shall set the initial size of the files table
 
-The system ini option ```pcov.directory``` shall restrict the collection of coverage to a single directory.
+The recommended defaults for production should be:
 
-Without this option set, pcov will record coverage for all files, this is a waste of resources but not a bad default.
+  * pcov.enabled = 0
 
-__set pcov.directory!!__
+The recommended defaults for development should be:
 
-The system ini option ```pcov.enabled``` shall enable or disable the installation of the zend hooks that pcov requires to operate; The hard coded default value is ```1```, the recommended default configuration file value should be ```0``` for production and ```1``` for development.
+  * pcov.enabled = 1
+  * pcov.directory = /path/to/your/source/tree
+
+__Note: PCOV is not interoperable with xdebug or phpdbg__
 
 Credits
 =======

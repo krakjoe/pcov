@@ -55,6 +55,8 @@ ZEND_BEGIN_MODULE_GLOBALS(pcov)
 	struct {
 		char   *directory;
 		zend_bool enabled;
+		zend_long memory;
+		zend_long files;
 	} ini;
 ZEND_END_MODULE_GLOBALS(pcov)
 

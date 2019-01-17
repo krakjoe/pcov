@@ -42,8 +42,22 @@ void (*zend_execute_ex_function)(zend_execute_data *execute_data);
 ZEND_DECLARE_MODULE_GLOBALS(pcov)
 
 PHP_INI_BEGIN()
-	STD_PHP_INI_BOOLEAN("pcov.enabled",      "1",    PHP_INI_SYSTEM, OnUpdateBool,   ini.enabled,          zend_pcov_globals, pcov_globals)
-	STD_PHP_INI_ENTRY  ("pcov.directory",    "/",    PHP_INI_SYSTEM, OnUpdateString, ini.directory,        zend_pcov_globals, pcov_globals)
+	STD_PHP_INI_BOOLEAN(
+		"pcov.enabled", "1", 
+		PHP_INI_SYSTEM, OnUpdateBool, 
+		ini.enabled, zend_pcov_globals, pcov_globals)
+	STD_PHP_INI_ENTRY  (
+		"pcov.directory", "/", 
+		PHP_INI_SYSTEM, OnUpdateString, 
+		ini.directory, zend_pcov_globals, pcov_globals)
+	STD_PHP_INI_ENTRY(
+		"pcov.initial.memory", "65336", 
+		PHP_INI_SYSTEM, OnUpdateLong, 
+		ini.memory, zend_pcov_globals, pcov_globals)
+	STD_PHP_INI_ENTRY(
+		"pcov.initial.files", "64", 
+		PHP_INI_SYSTEM, OnUpdateLong, 
+		ini.files, zend_pcov_globals, pcov_globals)
 PHP_INI_END()
 
 static PHP_GINIT_FUNCTION(pcov)
@@ -198,9 +212,9 @@ PHP_RINIT_FUNCTION(pcov)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
 
-	PCG(mem) = zend_arena_create(64 * 1024);
+	PCG(mem) = zend_arena_create(INI_INT("pcov.initial.memory"));
 
-	zend_hash_init(&PCG(files), 32, NULL, php_pcov_files_dtor, 0);
+	zend_hash_init(&PCG(files), INI_INT("pcov.initial.files"), NULL, php_pcov_files_dtor, 0);
 
 	if (INI_STR("pcov.directory")) {
 		PCG(directory) = zend_string_init(
@@ -472,7 +486,7 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 
 	zend_arena_destroy(PCG(mem));
 
-	PCG(mem) = zend_arena_create(64 * 1024);
+	PCG(mem) = zend_arena_create(INI_INT("pcov.initial.memory"));
 	PCG(start) = NULL;
 } /* }}} */
 
