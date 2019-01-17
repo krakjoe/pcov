@@ -50,6 +50,8 @@ ZEND_BEGIN_MODULE_GLOBALS(pcov)
 	php_coverage_t *start;
 	php_coverage_t **next;
 	HashTable       files;
+	HashTable       ignore;
+	HashTable       wants;
 	zend_bool       enabled;
 	zend_string    *directory;
 	struct {

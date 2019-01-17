@@ -82,14 +82,28 @@ static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) {
 		return 1;
 	}
 
+	if (zend_hash_exists(&PCG(wants), filename)) {
+		return 1;
+	}
+
+	if (zend_hash_exists(&PCG(ignore), filename)) {
+		return 0;
+	}
+
 	if (ZSTR_LEN(filename) < ZSTR_LEN(PCG(directory))) {
 		return 0;
 	}
 
-	return strncasecmp(
+	if (strncmp(
 		ZSTR_VAL(filename), 
 		ZSTR_VAL(PCG(directory)), 
-		ZSTR_LEN(PCG(directory))) == SUCCESS;
+		ZSTR_LEN(PCG(directory))) == SUCCESS) {
+		zend_hash_add_empty_element(&PCG(wants), filename);
+		return 1;
+	}
+
+	zend_hash_add_empty_element(&PCG(ignore), filename);
+	return 0;
 }
 
 static zend_always_inline php_coverage_t* php_pcov_create(zend_execute_data *execute_data) {
@@ -151,7 +165,7 @@ static zend_always_inline void php_pcov_cache(zend_op_array *result) {
 void php_pcov_execute_ex(zend_execute_data *execute_data) {
 	int zrc        = 0;
 
-	if (EX_CALL_INFO() & ZEND_CALL_TOP) {
+	if (!EX(func)->common.function_name) {
 		php_pcov_cache((zend_op_array*) EX(func));
 	}
 
@@ -231,6 +245,8 @@ PHP_RINIT_FUNCTION(pcov)
 	PCG(mem) = zend_arena_create(INI_INT("pcov.initial.memory"));
 
 	zend_hash_init(&PCG(files), INI_INT("pcov.initial.files"), NULL, php_pcov_files_dtor, 0);
+	zend_hash_init(&PCG(ignore), INI_INT("pcov.initial.files"), NULL, NULL, 0);
+	zend_hash_init(&PCG(wants), INI_INT("pcov.initial.files"), NULL, NULL, 0);
 
 	if (INI_STR("pcov.directory")) {
 		PCG(directory) = zend_string_init(
@@ -246,11 +262,13 @@ PHP_RINIT_FUNCTION(pcov)
  */
 PHP_RSHUTDOWN_FUNCTION(pcov)
 {
-	if (!INI_BOOL("pcov.enabled")) {
+	if (!INI_BOOL("pcov.enabled") || CG(unclean_shutdown)) {
 		return SUCCESS;
 	}
 
 	zend_hash_destroy(&PCG(files));
+	zend_hash_destroy(&PCG(ignore));
+	zend_hash_destroy(&PCG(wants));
 
 	if (PCG(start)) {
 		php_coverage_t *coverage = PCG(start);
@@ -414,10 +432,6 @@ PHP_NAMED_FUNCTION(php_pcov_collect)
 	zval      *filter = NULL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|la", &type, &filter) != SUCCESS) {
-		return;
-	}
-
-	if (!INI_BOOL("pcov.enabled")) {
 		return;
 	}
 
