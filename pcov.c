@@ -36,14 +36,15 @@
 #define PCOV_FILTER_INCLUDE 1
 #define PCOV_FILTER_EXCLUDE 2
 
+zend_op_array* (*zend_compile_file_function)(zend_file_handle *, int);
+void (*zend_execute_ex_function)(zend_execute_data *execute_data);
+
 ZEND_DECLARE_MODULE_GLOBALS(pcov)
 
 PHP_INI_BEGIN()
-	STD_PHP_INI_BOOLEAN("pcov.enabled",      "0",    PHP_INI_SYSTEM, OnUpdateBool,   enabled,          zend_pcov_globals, pcov_globals)
+	STD_PHP_INI_BOOLEAN("pcov.enabled",      "1",    PHP_INI_SYSTEM, OnUpdateBool,   ini.enabled,          zend_pcov_globals, pcov_globals)
 	STD_PHP_INI_ENTRY  ("pcov.directory",    "/",    PHP_INI_SYSTEM, OnUpdateString, ini.directory,        zend_pcov_globals, pcov_globals)
 PHP_INI_END()
-
-zend_op_array* (*zend_compile_file_function)(zend_file_handle *, int);
 
 static PHP_GINIT_FUNCTION(pcov)
 {
@@ -83,7 +84,7 @@ static zend_always_inline php_coverage_t* php_pcov_create(zend_execute_data *exe
 	return coverage;
 }
 
-static zend_always_inline int php_pcov_invoke(zend_execute_data *execute_data) {
+static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) {
 	if (PCG(enabled) && php_pcov_wants(EX(func)->op_array.filename)) {
 		php_coverage_t *coverage = php_pcov_create(execute_data);
 
@@ -100,10 +101,7 @@ static zend_always_inline int php_pcov_invoke(zend_execute_data *execute_data) {
 }
 
 void php_pcov_execute_ex(zend_execute_data *execute_data) {
-	int executing  = PCG(executing);
 	int zrc        = 0;
-
-	PCG(executing) = 1;
 
 	while (1) {
 		if (EX(opline)->opcode == ZEND_DO_FCALL || 
@@ -113,7 +111,7 @@ void php_pcov_execute_ex(zend_execute_data *execute_data) {
 			zend_execute_ex = execute_ex;
 		}
 
-		zrc = php_pcov_invoke(execute_data);
+		zrc = php_pcov_trace(execute_data);
 
 		if (zend_execute_ex != php_pcov_execute_ex) {
 			zend_execute_ex = php_pcov_execute_ex;
@@ -121,7 +119,6 @@ void php_pcov_execute_ex(zend_execute_data *execute_data) {
 
 		if (zrc != SUCCESS) {
 			if (zrc < SUCCESS) {
-				PCG(executing) = executing;
 				return;
 			}
 			execute_data = EG(current_execute_data);
@@ -132,22 +129,20 @@ void php_pcov_execute_ex(zend_execute_data *execute_data) {
 zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) {
 	zend_op_array* result = zend_compile_file_function(fh, type);	
 
-	if (result) {
-		if (php_pcov_wants(fh->opened_path)) {
-			zend_op_array *mapped  = 
-				(zend_op_array*) zend_hash_add_mem(
-					&PCG(files), 
-					fh->opened_path, 
-					result, sizeof(zend_op_array));
+	if (result && php_pcov_wants(fh->opened_path)) {
+		zend_op_array *mapped  = 
+			(zend_op_array*) zend_hash_add_mem(
+				&PCG(files), 
+				fh->opened_path, 
+				result, sizeof(zend_op_array));
 
-			if (mapped->static_variables) {
-				if (!(GC_FLAGS(mapped->static_variables) & IS_ARRAY_IMMUTABLE)) {
-					GC_REFCOUNT(mapped->static_variables)++;
-				}
+		if (mapped->static_variables) {
+			if (!(GC_FLAGS(mapped->static_variables) & IS_ARRAY_IMMUTABLE)) {
+				GC_REFCOUNT(mapped->static_variables)++;
 			}
-
-			mapped->refcount = NULL;
 		}
+
+		mapped->refcount = NULL;
 	}
 
 	return result;
@@ -166,11 +161,15 @@ PHP_MINIT_FUNCTION(pcov)
 	REGISTER_NS_LONG_CONSTANT("pcov", "inclusive",   PCOV_FILTER_INCLUDE, CONST_CS|CONST_PERSISTENT);
 	REGISTER_NS_LONG_CONSTANT("pcov", "exclusive",   PCOV_FILTER_EXCLUDE, CONST_CS|CONST_PERSISTENT);
 
-	zend_compile_file_function = zend_compile_file;
-	zend_execute_ex            = php_pcov_execute_ex;
-	zend_compile_file          = php_pcov_compile_file;
-
 	REGISTER_INI_ENTRIES();
+
+	if (INI_BOOL("pcov.enabled")) {
+		zend_execute_ex_function   = zend_execute_ex;
+		zend_compile_file_function = zend_compile_file;
+
+		zend_execute_ex            = php_pcov_execute_ex;
+		zend_compile_file          = php_pcov_compile_file;
+	}
 
 	return SUCCESS;
 }
@@ -179,7 +178,12 @@ PHP_MINIT_FUNCTION(pcov)
 /* {{{ PHP_MSHUTDOWN_FUNCTION
  */
 PHP_MSHUTDOWN_FUNCTION(pcov)
-{	
+{
+	if (INI_BOOL("pcov.enabled")) {
+		zend_execute_ex   = zend_execute_ex_function;
+		zend_compile_file = zend_compile_file_function;
+	}
+
 	UNREGISTER_INI_ENTRIES();
 
 	return SUCCESS;

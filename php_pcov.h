@@ -49,13 +49,13 @@ ZEND_BEGIN_MODULE_GLOBALS(pcov)
 	zend_arena     *mem;
 	php_coverage_t *start;
 	php_coverage_t **next;
-	zend_bool       executing;
 	HashTable       files;
 	zend_bool       enabled;
+	zend_string    *directory;
 	struct {
 		char   *directory;
+		zend_bool enabled;
 	} ini;
-	zend_string    *directory;
 ZEND_END_MODULE_GLOBALS(pcov)
 
 #define PCG(v) ZEND_MODULE_GLOBALS_ACCESSOR(pcov, v)

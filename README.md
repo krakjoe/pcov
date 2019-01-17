@@ -51,6 +51,8 @@ Without this option set, pcov will record coverage for all files, this is a wast
 
 __set pcov.directory!!__
 
+The system ini option ```pcov.enabled``` shall enable or disable the installation of the zend hooks that pcov requires to operate; The hard coded default value is ```1```, the recommended default configuration file value should be ```0``` for production and ```1``` for development.
+
 Credits
 =======
 
