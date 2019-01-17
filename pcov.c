@@ -390,16 +390,28 @@ PHP_NAMED_FUNCTION(php_pcov_collect)
 {
 	zend_long type = PCOV_FILTER_ALL;
 	zval      *filter = NULL;
-	zval      *filtered = NULL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|la", &type, &filter) != SUCCESS) {
 		return;
 	}
 
+	if (PCOV_FILTER_INCLUDE == type ||
+	    PCOV_FILTER_EXCLUDE == type) {
+		if (Z_TYPE_P(filter) != IS_ARRAY) {
+#if PHP_VERSION_ID <= 70100
+			zend_wrong_parameter_type_error(2, Z_EXPECTED_ARRAY, filter);
+#else
+			zend_wrong_parameter_type_error(1, 2, Z_EXPECTED_ARRAY, filter);
+#endif
+			return;
+		}
+	}
+
 	array_init(return_value);
 
 	switch(type) {
-		case PCOV_FILTER_INCLUDE:
+		case PCOV_FILTER_INCLUDE: {
+			zval *filtered;
 			ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(filter), filtered) {
 				if (Z_TYPE_P(filtered) != IS_STRING) {
 					continue;
@@ -407,10 +419,11 @@ PHP_NAMED_FUNCTION(php_pcov_collect)
 
 				php_pcov_discover_file(Z_STR_P(filtered), return_value);
 			} ZEND_HASH_FOREACH_END();
-		break;
+		} break;
 
 		case PCOV_FILTER_EXCLUDE: {
 			zend_string *name;
+			zval *filtered;
 			ZEND_HASH_FOREACH_STR_KEY(&PCG(files), name) {
 				ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(filter), filtered) {
 					if (zend_string_equals(name, Z_STR_P(filtered))) {
@@ -464,12 +477,12 @@ PHP_NAMED_FUNCTION(php_pcov_stop)
 	PCG(enabled) = 0;
 } /* }}} */
 
-/* {{{ void \pcov\clear(bool $code = false) */
+/* {{{ void \pcov\clear(bool $files = false) */
 PHP_NAMED_FUNCTION(php_pcov_clear)
 {
-	zend_bool code = 0;
+	zend_bool files = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|b", &code) != SUCCESS) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|b", &files) != SUCCESS) {
 		return;
 	}
 
@@ -480,7 +493,7 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 		} while (coverage = coverage->next);
 	}
 
-	if (code) {
+	if (files) {
 		zend_hash_clean(&PCG(files));
 	}
 

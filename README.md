@@ -14,17 +14,17 @@ API
 
 ```php
 /*
-* Shall start collecting coverage information from Zend
+* Shall start recording coverage information
 **/
 function \pcov\start(void);
 
 /*
-* Shall stop collecting coverage information from Zend
+* Shall stop recording coverage information
 **/
 function \pcov\stop(void);
 
 /*
-* Shall collect coverage information from Zend
+* Shall collect coverage information
 * @param integer \pcov\all        shall collect coverage information for all files
 *		 \pcov\inclusive  shall collect coverage information for the specified files
 *		 \pcov\exclusive  shall collect coverage information for all but the specified files
@@ -34,10 +34,10 @@ function \pcov\collect(int $type = \pcov\all, array $filter = []);
 
 /*
 * Shall clear stored coverage information
-* @param set true to clear code cache
-* Note: clearing the code cache may have surprising consequences
+* @param set true to clear file cache
+* Note: clearing the file may have surprising consequences
 */
-function \pcov\clear(bool $code = false);
+function \pcov\clear(bool $files = false);
 ```
 
 Configuration
