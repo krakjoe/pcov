@@ -121,15 +121,11 @@ static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) {
 static zend_always_inline void php_pcov_cache(zend_op_array *result) {
 	zend_op_array *mapped;
 
-	if (!result || !result->filename) {
+	if (!php_pcov_wants(result->filename)) {
 		return;
 	}
 
 	if (zend_hash_exists(&PCG(files), result->filename)) {
-		return;
-	}
-
-	if (!php_pcov_wants(result->filename)) {
 		return;
 	}
 
