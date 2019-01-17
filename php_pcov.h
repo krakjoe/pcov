@@ -52,6 +52,10 @@ ZEND_BEGIN_MODULE_GLOBALS(pcov)
 	zend_bool       executing;
 	HashTable       files;
 	zend_bool       enabled;
+	struct {
+		char   *directory;
+	} ini;
+	zend_string    *directory;
 ZEND_END_MODULE_GLOBALS(pcov)
 
 #define PCG(v) ZEND_MODULE_GLOBALS_ACCESSOR(pcov, v)
