@@ -128,10 +128,9 @@ static zend_always_inline void php_pcov_cache(zend_op_array *result) {
 	if (zend_hash_exists(&PCG(files), result->filename)) {
 		return;
 	}
-	
+
 	if (!php_pcov_wants(result->filename)) {
 		return;
-		
 	}
 
 	mapped = (zend_op_array*) zend_hash_add_mem(
@@ -147,7 +146,7 @@ static zend_always_inline void php_pcov_cache(zend_op_array *result) {
 
 	mapped->refcount = NULL;
 #if PHP_VERSION_ID >= 70400
-	ZEND_MAP_PTR_NEW(mapped->run_time_cache);
+	ZEND_MAP_PTR_INIT(mapped->run_time_cache, NULL);
 #else
 	mapped->run_time_cache = NULL;
 #endif
