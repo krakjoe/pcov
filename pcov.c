@@ -505,8 +505,13 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 
 /* {{{ */
 ZEND_BEGIN_ARG_INFO_EX(php_pcov_collect_arginfo, 0, 0, 0)
-	ZEND_ARG_TYPE_INFO(0, type, IS_LONG, 1)
-	ZEND_ARG_TYPE_INFO(0, filter, IS_ARRAY, 1)
+	ZEND_ARG_TYPE_INFO(0, type, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, filter, IS_ARRAY, 0)
+ZEND_END_ARG_INFO() /* }}} */
+
+/* {{{ */
+ZEND_BEGIN_ARG_INFO_EX(php_pcov_clear_arginfo, 0, 0, 0)
+	ZEND_ARG_TYPE_INFO(0, files, _IS_BOOL, 0)
 ZEND_END_ARG_INFO() /* }}} */
 
 /* {{{ */
@@ -519,7 +524,7 @@ const zend_function_entry php_pcov_functions[] = {
 	ZEND_NS_FENTRY("pcov", start,   php_pcov_start,   php_pcov_no_arginfo, 0)
 	ZEND_NS_FENTRY("pcov", stop,    php_pcov_stop,    php_pcov_no_arginfo, 0)
 	ZEND_NS_FENTRY("pcov", collect, php_pcov_collect, php_pcov_collect_arginfo, 0)
-	ZEND_NS_FENTRY("pcov", clear,   php_pcov_clear,   php_pcov_no_arginfo, 0)
+	ZEND_NS_FENTRY("pcov", clear,   php_pcov_clear,   php_pcov_clear_arginfo, 0)
 	PHP_FE_END
 };
 /* }}} */
