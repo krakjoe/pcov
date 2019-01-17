@@ -1,6 +1,8 @@
 PCOV
 ====
 
+[![Build Status](https://travis-ci.org/krakjoe/pcov.svg?branch=master)](https://travis-ci.org/krakjoe/pcov)
+
 A self contained [CodeCoverage](https://github.com/sebastianbergmann/php-code-coverage) compatible driver for PHP7
 
 Requirements
