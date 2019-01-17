@@ -37,6 +37,10 @@
 #define PCOV_FILTER_INCLUDE 1
 #define PCOV_FILTER_EXCLUDE 2
 
+#ifndef GC_ADDREF
+#	define GC_ADDREF(g) ++GC_REFCOUNT(g)
+#endif
+
 zend_op_array* (*zend_compile_file_function)(zend_file_handle *, int);
 void (*zend_execute_ex_function)(zend_execute_data *execute_data);
 
@@ -153,7 +157,7 @@ zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) {
 
 		if (mapped->static_variables) {
 			if (!(GC_FLAGS(mapped->static_variables) & IS_ARRAY_IMMUTABLE)) {
-				GC_REFCOUNT(mapped->static_variables)++;
+				GC_ADDREF(mapped->static_variables);
 			}
 		}
 
@@ -334,7 +338,7 @@ static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *
 	}
 
 	while (opline < end) {
-		if (php_pcov_discover_ignore(opline->opcode)) {
+		if (php_pcov_discover_ignore(opline->opcode) || opline->lineno < 1) {
 			opline++;
 			continue;
 		}
