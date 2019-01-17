@@ -146,6 +146,11 @@ static zend_always_inline void php_pcov_cache(zend_op_array *result) {
 	}
 
 	mapped->refcount = NULL;
+#if PHP_VERSION_ID >= 70400
+	ZEND_MAP_PTR_NEW(mapped->run_time_cache);
+#else
+	mapped->run_time_cache = NULL;
+#endif
 }
 
 void php_pcov_execute_ex(zend_execute_data *execute_data) {
