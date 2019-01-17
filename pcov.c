@@ -49,15 +49,15 @@ PHP_INI_BEGIN()
 		ini.enabled, zend_pcov_globals, pcov_globals)
 	STD_PHP_INI_ENTRY  (
 		"pcov.directory", "/", 
-		PHP_INI_SYSTEM, OnUpdateString, 
+		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateString, 
 		ini.directory, zend_pcov_globals, pcov_globals)
 	STD_PHP_INI_ENTRY(
 		"pcov.initial.memory", "65336", 
-		PHP_INI_SYSTEM, OnUpdateLong, 
+		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateLong, 
 		ini.memory, zend_pcov_globals, pcov_globals)
 	STD_PHP_INI_ENTRY(
 		"pcov.initial.files", "64", 
-		PHP_INI_SYSTEM, OnUpdateLong, 
+		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateLong, 
 		ini.files, zend_pcov_globals, pcov_globals)
 PHP_INI_END()
 
@@ -213,6 +213,10 @@ PHP_RINIT_FUNCTION(pcov)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
 
+	if (!INI_BOOL("pcov.enabled")) {
+		return SUCCESS;
+	}
+
 	PCG(mem) = zend_arena_create(INI_INT("pcov.initial.memory"));
 
 	zend_hash_init(&PCG(files), INI_INT("pcov.initial.files"), NULL, php_pcov_files_dtor, 0);
@@ -232,6 +236,10 @@ PHP_RINIT_FUNCTION(pcov)
 PHP_RSHUTDOWN_FUNCTION(pcov)
 {
 	zend_hash_destroy(&PCG(files));
+
+	if (!INI_BOOL("pcov.enabled")) {
+		return SUCCESS;
+	}
 
 	if (PCG(start)) {
 		php_coverage_t *coverage = PCG(start);
@@ -396,6 +404,10 @@ PHP_NAMED_FUNCTION(php_pcov_collect)
 		return;
 	}
 
+	if (!INI_BOOL("pcov.enabled")) {
+		return;
+	}
+
 	if (PCOV_FILTER_ALL != type &&
 	    PCOV_FILTER_INCLUDE != type &&
 	    PCOV_FILTER_EXCLUDE != type) {
@@ -454,6 +466,10 @@ PHP_NAMED_FUNCTION(php_pcov_start)
 		return;
 	}
 
+	if (!INI_BOOL("pcov.enabled")) {
+		return;
+	}
+
 	PCG(enabled) = 1;
 } /* }}} */
 
@@ -461,6 +477,10 @@ PHP_NAMED_FUNCTION(php_pcov_start)
 PHP_NAMED_FUNCTION(php_pcov_stop)
 {
 	if (zend_parse_parameters_none() != SUCCESS) {
+		return;
+	}
+
+	if (!INI_BOOL("pcov.enabled")) {
 		return;
 	}
 
@@ -473,6 +493,10 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 	zend_bool files = 0;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|b", &files) != SUCCESS) {
+		return;
+	}
+
+	if (!INI_BOOL("pcov.enabled")) {
 		return;
 	}
 

@@ -43,10 +43,10 @@ function \pcov\clear(bool $files = false);
 Configuration
 =============
 
-  * pcov.enabled          (default: 1)      shall enable or disable zend hooks for pcov
-  * pcov.directory        (default: /)      shall restrict collection to a single directory
-  * pcov.initial.memory   (default: 65536)  shall set the initial size of the arena used by pcov
-  * pcov.initial.files    (default: 64)     shall set the initial size of the files table
+  * pcov.enabled          (default: 1, system)             shall enable or disable zend hooks for pcov
+  * pcov.directory        (default: /, system,dir)         shall restrict collection to a single directory
+  * pcov.initial.memory   (default: 65536, system,dir)     shall set the initial size of the arena used by pcov
+  * pcov.initial.files    (default: 64, system,dir)        shall set the initial size of the files table
 
 The recommended defaults for production should be:
 
