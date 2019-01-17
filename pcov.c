@@ -246,11 +246,11 @@ PHP_RINIT_FUNCTION(pcov)
  */
 PHP_RSHUTDOWN_FUNCTION(pcov)
 {
-	zend_hash_destroy(&PCG(files));
-
 	if (!INI_BOOL("pcov.enabled")) {
 		return SUCCESS;
 	}
+
+	zend_hash_destroy(&PCG(files));
 
 	if (PCG(start)) {
 		php_coverage_t *coverage = PCG(start);
