@@ -274,6 +274,13 @@ PHP_RSHUTDOWN_FUNCTION(pcov)
 		return SUCCESS;
 	}
 
+	if (PCG(start)) {
+		php_coverage_t *coverage = PCG(start);
+		do {
+			zend_string_release(coverage->file);
+		} while (coverage = coverage->next);
+	}
+
 	zend_hash_destroy(&PCG(files));
 	zend_hash_destroy(&PCG(ignores));
 	zend_hash_destroy(&PCG(wants));
@@ -550,6 +557,13 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 
 	if (!INI_BOOL("pcov.enabled")) {
 		return;
+	}
+
+	if (PCG(start)) {
+		php_coverage_t *coverage = PCG(start);
+		do {
+			zend_string_release(coverage->file);
+		} while (coverage = coverage->next);
 	}
 
 	if (files) {
