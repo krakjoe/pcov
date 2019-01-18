@@ -108,6 +108,18 @@ static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) {
 	return 0;
 }
 
+static zend_always_inline zend_bool php_pcov_transparent_opcode(const zend_op *opline) { /* {{{ */
+	switch (opline->opcode) {
+		case ZEND_RECV:
+		case ZEND_RECV_INIT:
+		case ZEND_SEND_VAL:
+		case ZEND_SEND_VAR_EX:
+		case ZEND_SEND_REF:
+			return 1;
+	}
+	return 0;
+} /* }}} */
+
 static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *opline, zend_uchar opcode) { /* {{{ */
 	if (opline->lineno < 1) {
 		return 1;
@@ -400,9 +412,16 @@ static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *
 		}
 
 		if (!zend_hash_index_exists(Z_ARRVAL_P(return_value), opline->lineno)) {
-			zend_hash_index_add(
-				Z_ARRVAL_P(return_value), 
-				opline->lineno, &php_pcov_uncovered);
+			if (php_pcov_transparent_opcode(opline)) {
+				zend_hash_index_add(
+					Z_ARRVAL_P(return_value), 
+					opline->lineno, &php_pcov_covered);
+			} else {
+				zend_hash_index_add(
+					Z_ARRVAL_P(return_value), 
+					opline->lineno, &php_pcov_uncovered);
+			}
+			
 		}
 
 		if ((opline +0)->opcode == ZEND_NEW && 
