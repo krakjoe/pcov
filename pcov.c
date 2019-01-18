@@ -112,9 +112,11 @@ static zend_always_inline zend_bool php_pcov_transparent_opcode(const zend_op *o
 	switch (opline->opcode) {
 		case ZEND_RECV:
 		case ZEND_RECV_INIT:
+		case ZEND_RECV_VARIADIC:
 		case ZEND_SEND_VAL:
 		case ZEND_SEND_VAR_EX:
 		case ZEND_SEND_REF:
+		case ZEND_SEND_UNPACK:
 			return 1;
 	}
 	return 0;
@@ -124,7 +126,7 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *oplin
 	if (opline->lineno < 1) {
 		return 1;
 	}
-
+	
 	return
 	    opcode == ZEND_NOP || 
 	    opcode == ZEND_OP_DATA || 
@@ -389,9 +391,9 @@ static zend_always_inline void php_pcov_report(php_coverage_t *coverage, zval *f
 } /* }}} */
 
 static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *return_value) { /* {{{ */
-	zend_op       *opline = ops->opcodes + ops->num_args + !!(ops->fn_flags & ZEND_ACC_VARIADIC), 
+	zend_op       *opline = ops->opcodes, 
 		      *end    = ops->opcodes + ops->last;
-	
+
 	if (ops->last >= 1 && 
 	   (((end - 1)->opcode == ZEND_RETURN || 
              (end - 1)->opcode == ZEND_RETURN_BY_REF || 
@@ -421,7 +423,6 @@ static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *
 					Z_ARRVAL_P(return_value), 
 					opline->lineno, &php_pcov_uncovered);
 			}
-			
 		}
 
 		if ((opline +0)->opcode == ZEND_NEW && 
