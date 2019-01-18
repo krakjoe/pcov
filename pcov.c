@@ -45,6 +45,7 @@
 #endif
 
 static zval php_pcov_uncovered;
+static zval php_pcov_covered;
 
 void (*zend_execute_ex_function)(zend_execute_data *execute_data);
 
@@ -79,10 +80,6 @@ static PHP_GINIT_FUNCTION(pcov)
 }
 
 static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) {
-	if (!filename) {
-		return 0;
-	}
-
 	if (!PCG(directory)) {
 		return 1;
 	}
@@ -111,18 +108,66 @@ static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) {
 	return 0;
 }
 
-static zend_always_inline php_coverage_t* php_pcov_create(zend_execute_data *execute_data) {
+static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *opline, zend_uchar opcode) { /* {{{ */
+	if (opline->lineno < 1) {
+		return 1;
+	}
+
+	return
+	    opcode == ZEND_NOP || 
+	    opcode == ZEND_OP_DATA || 
+ 	    opcode == ZEND_FE_FREE || 
+	    opcode == ZEND_FREE || 
+	    opcode == ZEND_ASSERT_CHECK || 
+	    opcode == ZEND_VERIFY_RETURN_TYPE || 
+	    opcode == ZEND_DECLARE_CONST || 
+	    opcode == ZEND_DECLARE_CLASS || 
+	    opcode == ZEND_DECLARE_INHERITED_CLASS || 
+	    opcode == ZEND_DECLARE_FUNCTION || 
+	    opcode == ZEND_DECLARE_INHERITED_CLASS_DELAYED || 
+	    opcode == ZEND_DECLARE_ANON_CLASS || 
+	    opcode == ZEND_DECLARE_ANON_INHERITED_CLASS || 
+	    opcode == ZEND_FAST_RET || 
+	    opcode == ZEND_TICKS || 
+	    opcode == ZEND_EXT_STMT || 
+	    opcode == ZEND_EXT_FCALL_BEGIN || 
+	    opcode == ZEND_EXT_FCALL_END || 
+	    opcode == ZEND_EXT_NOP || 
+#if PHP_VERSION_ID < 70400
+	    opcode == ZEND_VERIFY_ABSTRACT_CLASS || 
+	    opcode == ZEND_ADD_TRAIT || 
+	    opcode == ZEND_BIND_TRAITS || 
+#endif
+	    opcode == ZEND_BIND_GLOBAL
+	;
+} /* }}} */
+
+static zend_always_inline php_coverage_t* php_pcov_create(zend_execute_data *execute_data) { /* {{{ */
 	php_coverage_t *coverage = (php_coverage_t*) zend_arena_alloc(&PCG(mem), sizeof(php_coverage_t));
 
 	coverage->file     = zend_string_copy(EX(func)->op_array.filename);
 	coverage->line     = EX(opline)->lineno;
 	coverage->next     = NULL;
 
-	return coverage;
-}
+	return (PCG(create) = coverage);
+} /* }}} */
 
-static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) {
-	if (PCG(enabled) && php_pcov_wants(EX(func)->op_array.filename)) {
+static zend_always_inline zend_bool php_pcov_needs(zend_execute_data *execute_data) { /* {{{ */
+	if (php_pcov_ignored_opcode(EX(opline), EX(opline)->opcode)) {
+		return 0;
+	}
+
+	if (PCG(create) &&
+	    PCG(create)->file == EX(func)->op_array.filename &&
+	    PCG(create)->line == EX(opline)->lineno) {
+		return 0;
+	}
+
+	return php_pcov_wants(EX(func)->op_array.filename);
+} /* }}} */
+
+static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) { /* {{{ */
+	if (PCG(enabled) && php_pcov_needs(execute_data)) {
 		php_coverage_t *coverage = php_pcov_create(execute_data);
 
 		if (!PCG(start)) {
@@ -135,12 +180,12 @@ static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) {
 	}
 
 	return zend_vm_call_opcode_handler(execute_data);
-}
+} /* }}} */
 
-static zend_always_inline void php_pcov_cache(zend_op_array *result) {
+static zend_always_inline void php_pcov_cache(zend_op_array *result) { /* {{{ */
 	zend_op_array *mapped;
 
-	if (!php_pcov_wants(result->filename)) {
+	if (!result->filename || !php_pcov_wants(result->filename)) {
 		return;
 	}
 
@@ -165,9 +210,9 @@ static zend_always_inline void php_pcov_cache(zend_op_array *result) {
 #else
 	mapped->run_time_cache = NULL;
 #endif
-}
+} /* }}} */
 
-void php_pcov_execute_ex(zend_execute_data *execute_data) {
+void php_pcov_execute_ex(zend_execute_data *execute_data) { /* {{{ */
 	int zrc        = 0;
 
 	if (!EX(func)->common.function_name) {
@@ -195,12 +240,12 @@ void php_pcov_execute_ex(zend_execute_data *execute_data) {
 			execute_data = EG(current_execute_data);
 		}
 	}
-}
+} /* }}} */
 
-void php_pcov_files_dtor(zval *zv) {
+void php_pcov_files_dtor(zval *zv) { /* {{{ */
 	destroy_op_array(Z_PTR_P(zv));
 	efree(Z_PTR_P(zv));
-}
+} /* }}} */
 
 /* {{{ PHP_MINIT_FUNCTION
  */
@@ -218,6 +263,7 @@ PHP_MINIT_FUNCTION(pcov)
 	}
 
 	ZVAL_LONG(&php_pcov_uncovered, PHP_PCOV_UNCOVERED);
+	ZVAL_LONG(&php_pcov_covered,   PHP_PCOV_COVERED);
 
 	return SUCCESS;
 }
@@ -313,46 +359,21 @@ static zend_always_inline void php_pcov_report(php_coverage_t *coverage, zval *f
 
 	do {
 		zval *table = zend_hash_find(Z_ARRVAL_P(filter), coverage->file);
-		zval *hit;
 
 		if (table) {
-			hit = zend_hash_index_find(Z_ARRVAL_P(table), coverage->line);
+			zval *hit = zend_hash_index_find(Z_ARRVAL_P(table), coverage->line);
 
 			if (hit) {
 				Z_LVAL_P(hit) = PHP_PCOV_COVERED;
+			} else {
+				/* 
+					note: during discovery we ignore opcodes that are not ignored
+					      during tracing, SEND/RECV and the implicit return
+				*/
+				zend_hash_index_add(Z_ARRVAL_P(table), coverage->line, &php_pcov_covered);
 			}
 		}
 	} while (coverage = coverage->next);
-} /* }}} */
-
-static zend_always_inline zend_bool php_pcov_discover_ignore(zend_uchar opcode) { /* {{{ */
-	return
-	    opcode == ZEND_NOP || 
-	    opcode == ZEND_OP_DATA || 
- 	    opcode == ZEND_FE_FREE || 
-	    opcode == ZEND_FREE || 
-	    opcode == ZEND_ASSERT_CHECK || 
-	    opcode == ZEND_VERIFY_RETURN_TYPE || 
-	    opcode == ZEND_DECLARE_CONST || 
-	    opcode == ZEND_DECLARE_CLASS || 
-	    opcode == ZEND_DECLARE_INHERITED_CLASS || 
-	    opcode == ZEND_DECLARE_FUNCTION || 
-	    opcode == ZEND_DECLARE_INHERITED_CLASS_DELAYED || 
-	    opcode == ZEND_DECLARE_ANON_CLASS || 
-	    opcode == ZEND_DECLARE_ANON_INHERITED_CLASS || 
-	    opcode == ZEND_FAST_RET || 
-	    opcode == ZEND_TICKS || 
-	    opcode == ZEND_EXT_STMT || 
-	    opcode == ZEND_EXT_FCALL_BEGIN || 
-	    opcode == ZEND_EXT_FCALL_END || 
-	    opcode == ZEND_EXT_NOP || 
-#if PHP_VERSION_ID < 70400
-	    opcode == ZEND_VERIFY_ABSTRACT_CLASS || 
-	    opcode == ZEND_ADD_TRAIT || 
-	    opcode == ZEND_BIND_TRAITS || 
-#endif
-	    opcode == ZEND_BIND_GLOBAL
-	;
 } /* }}} */
 
 static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *return_value) { /* {{{ */
@@ -373,8 +394,7 @@ static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *
 	}
 
 	while (opline < end) {
-		if (opline->lineno < 1 ||
-		    php_pcov_discover_ignore(opline->opcode)) {
+		if (php_pcov_ignored_opcode(opline, opline->opcode)) {
 			opline++;
 			continue;
 		}
@@ -577,6 +597,7 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 
 	PCG(mem) = zend_arena_create(INI_INT("pcov.initial.memory"));
 	PCG(start) = NULL;
+	PCG(create) = NULL;
 } /* }}} */
 
 /* {{{ array \pcov\includes(void) */
