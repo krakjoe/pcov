@@ -396,7 +396,7 @@ static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *
 			         (end - 2)->opcode == ZEND_GENERATOR_RETURN ||
 			         (end - 2)->opcode == ZEND_VERIFY_RETURN_TYPE)) {
 		if (ops->function_name == NULL || (end - 1)->extended_value == -1) {
-			end -= (end - 1)->opcode == ZEND_VERIFY_RETURN_TYPE ?
+			end -= (end - 2)->opcode == ZEND_VERIFY_RETURN_TYPE ?
 					2 : 1;
 		}
 	}
