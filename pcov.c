@@ -57,7 +57,7 @@ PHP_INI_BEGIN()
 		PHP_INI_SYSTEM, OnUpdateBool, 
 		ini.enabled, zend_pcov_globals, pcov_globals)
 	STD_PHP_INI_ENTRY  (
-		"pcov.directory", "/", 
+		"pcov.directory", "", 
 		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateString, 
 		ini.directory, zend_pcov_globals, pcov_globals)
 	STD_PHP_INI_ENTRY(
@@ -262,6 +262,39 @@ PHP_MSHUTDOWN_FUNCTION(pcov)
 }
 /* }}} */
 
+char *php_pcov_directory_defaults[] = { /* {{{ */
+	"src",
+	"lib",
+	"app",
+	".",
+	NULL
+}; /* }}} */
+
+static zend_always_inline void php_pcov_setup_directory(char *directory) { /* {{{ */
+	char realpath[MAXPATHLEN];
+
+	if (!directory || !*directory) {
+		const char *try;
+
+_php_pcov_setup_directory_defaults:
+		try = php_pcov_directory_defaults[0];
+
+		while (try) {
+			if (VCWD_REALPATH(try, realpath)) {
+				directory = realpath;
+				break;
+			}
+			try++;	
+		}
+	} else if (VCWD_REALPATH(directory, realpath)) {
+		directory = realpath;
+	} else {
+		goto _php_pcov_setup_directory_defaults;
+	}
+
+	PCG(directory) = zend_string_init(directory, strlen(directory), 0);
+} /* }}} */
+
 /* {{{ PHP_RINIT_FUNCTION
  */
 PHP_RINIT_FUNCTION(pcov)
@@ -281,11 +314,7 @@ PHP_RINIT_FUNCTION(pcov)
 	zend_hash_init(&PCG(wants),      INI_INT("pcov.initial.files"), NULL, NULL, 0);
 	zend_hash_init(&PCG(discovered), INI_INT("pcov.initial.files"), NULL, ZVAL_PTR_DTOR, 0);
 
-	if (INI_STR("pcov.directory")) {
-		PCG(directory) = zend_string_init(
-			INI_STR("pcov.directory"), 
-			strlen(INI_STR("pcov.directory")), 0);
-	}
+	php_pcov_setup_directory(INI_STR("pcov.directory"));
 
 	return SUCCESS;
 }
