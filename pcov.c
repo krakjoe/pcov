@@ -110,9 +110,11 @@ static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) {
 
 static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *opline, zend_uchar opcode) { /* {{{ */
 	if (opline->lineno < 1) {
-		return 1;
+		if (opline->opcode == ZEND_HANDLE_EXCEPTION) {
+			return 0;
+		}
 	}
-	
+
 	return
 	    opcode == ZEND_NOP || 
 	    opcode == ZEND_OP_DATA || 
@@ -123,10 +125,12 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *oplin
 	    opcode == ZEND_RECV ||
 	    opcode == ZEND_RECV_INIT ||
 	    opcode == ZEND_RECV_VARIADIC ||
+#if 0
 	    opcode == ZEND_SEND_VAL ||
 	    opcode == ZEND_SEND_VAR_EX ||
 	    opcode == ZEND_SEND_REF ||
 	    opcode == ZEND_SEND_UNPACK ||
+#endif
 	    opcode == ZEND_DECLARE_CONST || 
 	    opcode == ZEND_DECLARE_CLASS || 
 	    opcode == ZEND_DECLARE_INHERITED_CLASS || 
@@ -135,7 +139,9 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *oplin
 	    opcode == ZEND_DECLARE_ANON_CLASS || 
 	    opcode == ZEND_DECLARE_ANON_INHERITED_CLASS || 
 	    opcode == ZEND_FAST_RET || 
+#if 0
 	    opcode == ZEND_FAST_CALL ||
+#endif
 	    opcode == ZEND_TICKS || 
 	    opcode == ZEND_EXT_STMT || 
 	    opcode == ZEND_EXT_FCALL_BEGIN || 
@@ -228,18 +234,7 @@ void php_pcov_execute_ex(zend_execute_data *execute_data) { /* {{{ */
 	}
 
 	while (1) {
-		if (EX(opline)->opcode == ZEND_DO_FCALL || 
-		    EX(opline)->opcode == ZEND_DO_UCALL ||
-		    EX(opline)->opcode == ZEND_DO_FCALL_BY_NAME ||
-		    EX(opline)->opcode == ZEND_USER_FUNCTION) {
-			zend_execute_ex = execute_ex;
-		}
-
 		zrc = php_pcov_trace(execute_data);
-
-		if (zend_execute_ex != php_pcov_execute_ex) {
-			zend_execute_ex = php_pcov_execute_ex;
-		}
 
 		if (zrc != SUCCESS) {
 			if (zrc < SUCCESS) {
@@ -373,12 +368,6 @@ static zend_always_inline void php_pcov_report(php_coverage_t *coverage, zval *f
 
 			if (hit) {
 				Z_LVAL_P(hit) = PHP_PCOV_COVERED;
-			} else {
-				/* 
-					note: during discovery we ignore opcodes that are not ignored
-					      during tracing, SEND/RECV and the implicit return
-				*/
-				zend_hash_index_add(Z_ARRVAL_P(table), coverage->line, &php_pcov_covered);
 			}
 		}
 	} while (coverage = coverage->next);
@@ -388,19 +377,19 @@ static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *
 	zend_op       *opline = ops->opcodes, 
 		      *end    = ops->opcodes + ops->last;
 
-	if (ops->function_name == NULL) {
-		end--;
-	} else if ((ops->last) >= 1 && ((end - 1)->opcode == ZEND_RETURN ||
-			         (end - 1)->opcode == ZEND_RETURN_BY_REF ||
-			         (end - 1)->opcode == ZEND_GENERATOR_RETURN) &&
-	    (ops->last > 1) &&  ((end - 2)->opcode == ZEND_RETURN ||
-			         (end - 2)->opcode == ZEND_RETURN_BY_REF ||
-			         (end - 2)->opcode == ZEND_GENERATOR_RETURN ||
-			         (end - 2)->opcode == ZEND_VERIFY_RETURN_TYPE)) {
-		if ((end - 1)->extended_value == -1) {
-			end -= (end - 2)->opcode == ZEND_VERIFY_RETURN_TYPE ?
-					2 : 1;
-		}
+	if (ops->last >= 1 && 
+		(((end - 1)->opcode == ZEND_RETURN || 
+		  (end - 1)->opcode == ZEND_RETURN_BY_REF || 
+		  (end - 1)->opcode == ZEND_GENERATOR_RETURN) && 
+		((ops->last > 1 && 
+			((end - 2)->opcode == ZEND_RETURN || 
+			(end - 2)->opcode == ZEND_RETURN_BY_REF || 
+			(end - 2)->opcode == ZEND_GENERATOR_RETURN || 
+			(end - 2)->opcode == ZEND_THROW ||
+			(end - 2)->opcode == ZEND_VERIFY_RETURN_TYPE))
+	  || ops->function_name == NULL || (end - 1)->extended_value == -1))) {
+		end -= (end - 2)->opcode == ZEND_VERIFY_RETURN_TYPE ?
+				2 : 1;
 	}
 
 	while (opline < end) {
