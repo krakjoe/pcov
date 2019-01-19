@@ -108,20 +108,6 @@ static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) {
 	return 0;
 }
 
-static zend_always_inline zend_bool php_pcov_transparent_opcode(const zend_op *opline) { /* {{{ */
-	switch (opline->opcode) {
-		case ZEND_RECV:
-		case ZEND_RECV_INIT:
-		case ZEND_RECV_VARIADIC:
-		case ZEND_SEND_VAL:
-		case ZEND_SEND_VAR_EX:
-		case ZEND_SEND_REF:
-		case ZEND_SEND_UNPACK:
-			return 1;
-	}
-	return 0;
-} /* }}} */
-
 static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *opline, zend_uchar opcode) { /* {{{ */
 	if (opline->lineno < 1) {
 		return 1;
@@ -132,8 +118,15 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *oplin
 	    opcode == ZEND_OP_DATA || 
  	    opcode == ZEND_FE_FREE || 
 	    opcode == ZEND_FREE || 
-	    opcode == ZEND_ASSERT_CHECK || 
-	    opcode == ZEND_VERIFY_RETURN_TYPE || 
+	    opcode == ZEND_ASSERT_CHECK ||
+	    opcode == ZEND_VERIFY_RETURN_TYPE ||  
+	    opcode == ZEND_RECV ||
+	    opcode == ZEND_RECV_INIT ||
+	    opcode == ZEND_RECV_VARIADIC ||
+	    opcode == ZEND_SEND_VAL ||
+	    opcode == ZEND_SEND_VAR_EX ||
+	    opcode == ZEND_SEND_REF ||
+	    opcode == ZEND_SEND_UNPACK ||
 	    opcode == ZEND_DECLARE_CONST || 
 	    opcode == ZEND_DECLARE_CLASS || 
 	    opcode == ZEND_DECLARE_INHERITED_CLASS || 
@@ -142,6 +135,7 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *oplin
 	    opcode == ZEND_DECLARE_ANON_CLASS || 
 	    opcode == ZEND_DECLARE_ANON_INHERITED_CLASS || 
 	    opcode == ZEND_FAST_RET || 
+	    opcode == ZEND_FAST_CALL ||
 	    opcode == ZEND_TICKS || 
 	    opcode == ZEND_EXT_STMT || 
 	    opcode == ZEND_EXT_FCALL_BEGIN || 
@@ -394,17 +388,17 @@ static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *
 	zend_op       *opline = ops->opcodes, 
 		      *end    = ops->opcodes + ops->last;
 
-	if (ops->last >= 1 && 
-	   (((end - 1)->opcode == ZEND_RETURN || 
-             (end - 1)->opcode == ZEND_RETURN_BY_REF || 
-             (end - 1)->opcode == ZEND_GENERATOR_RETURN) && 
-	   ((ops->last > 1 && 
-           ((end - 2)->opcode == ZEND_RETURN || 
-           (end - 2)->opcode == ZEND_RETURN_BY_REF || 
-           (end - 2)->opcode == ZEND_GENERATOR_RETURN || 
-           (end - 2)->opcode == ZEND_THROW))
-	  || ops->function_name == NULL || (end - 1)->extended_value == -1))) {
-		end--;
+	if ((ops->last) >= 1 && ((end - 1)->opcode == ZEND_RETURN ||
+			         (end - 1)->opcode == ZEND_RETURN_BY_REF ||
+			         (end - 1)->opcode == ZEND_GENERATOR_RETURN) &&
+	    (ops->last > 1) &&  ((end - 2)->opcode == ZEND_RETURN ||
+			         (end - 2)->opcode == ZEND_RETURN_BY_REF ||
+			         (end - 2)->opcode == ZEND_GENERATOR_RETURN ||
+			         (end - 2)->opcode == ZEND_VERIFY_RETURN_TYPE)) {
+		if (ops->function_name == NULL || (end - 1)->extended_value == -1) {
+			end -= (end - 1)->opcode == ZEND_VERIFY_RETURN_TYPE ?
+					2 : 1;
+		}
 	}
 
 	while (opline < end) {
@@ -414,15 +408,9 @@ static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *
 		}
 
 		if (!zend_hash_index_exists(Z_ARRVAL_P(return_value), opline->lineno)) {
-			if (php_pcov_transparent_opcode(opline)) {
-				zend_hash_index_add(
-					Z_ARRVAL_P(return_value), 
-					opline->lineno, &php_pcov_covered);
-			} else {
-				zend_hash_index_add(
-					Z_ARRVAL_P(return_value), 
-					opline->lineno, &php_pcov_uncovered);
-			}
+			zend_hash_index_add(
+				Z_ARRVAL_P(return_value), 
+				opline->lineno, &php_pcov_uncovered);
 		}
 
 		if ((opline +0)->opcode == ZEND_NEW && 
