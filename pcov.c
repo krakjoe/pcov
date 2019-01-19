@@ -119,12 +119,10 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *oplin
 	    opcode == ZEND_RECV ||
 	    opcode == ZEND_RECV_INIT ||
 	    opcode == ZEND_RECV_VARIADIC ||
-#if 0
 	    opcode == ZEND_SEND_VAL ||
 	    opcode == ZEND_SEND_VAR_EX ||
 	    opcode == ZEND_SEND_REF ||
 	    opcode == ZEND_SEND_UNPACK ||
-#endif
 	    opcode == ZEND_DECLARE_CONST || 
 	    opcode == ZEND_DECLARE_CLASS || 
 	    opcode == ZEND_DECLARE_INHERITED_CLASS || 
@@ -133,9 +131,7 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *oplin
 	    opcode == ZEND_DECLARE_ANON_CLASS || 
 	    opcode == ZEND_DECLARE_ANON_INHERITED_CLASS || 
 	    opcode == ZEND_FAST_RET || 
-#if 0
 	    opcode == ZEND_FAST_CALL ||
-#endif
 	    opcode == ZEND_TICKS || 
 	    opcode == ZEND_EXT_STMT || 
 	    opcode == ZEND_EXT_FCALL_BEGIN || 
@@ -336,17 +332,16 @@ PHP_MINFO_FUNCTION(pcov)
 /* }}} */
 
 static zend_always_inline void php_pcov_report(php_coverage_t *coverage, zval *filter) { /* {{{ */
+	zval *table;
+	zval *hit;
+
 	if (!coverage) {
 		return;
 	}
 
 	do {
-		zval *table = zend_hash_find(Z_ARRVAL_P(filter), coverage->file);
-
-		if (table) {
-			zval *hit = zend_hash_index_find(Z_ARRVAL_P(table), coverage->line);
-
-			if (hit) {
+		if ((table = zend_hash_find(Z_ARRVAL_P(filter), coverage->file))) {
+			if ((hit = zend_hash_index_find(Z_ARRVAL_P(table), coverage->line))) {
 				Z_LVAL_P(hit) = PHP_PCOV_COVERED;
 			}
 		}
