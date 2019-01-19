@@ -388,14 +388,16 @@ static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *
 	zend_op       *opline = ops->opcodes, 
 		      *end    = ops->opcodes + ops->last;
 
-	if ((ops->last) >= 1 && ((end - 1)->opcode == ZEND_RETURN ||
+	if (ops->function_name == NULL) {
+		end--;
+	} else if ((ops->last) >= 1 && ((end - 1)->opcode == ZEND_RETURN ||
 			         (end - 1)->opcode == ZEND_RETURN_BY_REF ||
 			         (end - 1)->opcode == ZEND_GENERATOR_RETURN) &&
 	    (ops->last > 1) &&  ((end - 2)->opcode == ZEND_RETURN ||
 			         (end - 2)->opcode == ZEND_RETURN_BY_REF ||
 			         (end - 2)->opcode == ZEND_GENERATOR_RETURN ||
 			         (end - 2)->opcode == ZEND_VERIFY_RETURN_TYPE)) {
-		if (ops->function_name == NULL || (end - 1)->extended_value == -1) {
+		if ((end - 1)->extended_value == -1) {
 			end -= (end - 2)->opcode == ZEND_VERIFY_RETURN_TYPE ?
 					2 : 1;
 		}
