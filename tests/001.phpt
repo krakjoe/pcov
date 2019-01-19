@@ -17,7 +17,7 @@ var_dump(\pcov\collect());
 ?>
 --EXPECTF--
 array(1) {
-  ["%s/001.php"]=>
+  ["%s%e001.php"]=>
   array(6) {
     [2]=>
     int(-1)
