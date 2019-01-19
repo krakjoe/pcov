@@ -49,7 +49,6 @@ ZEND_BEGIN_MODULE_GLOBALS(pcov)
 	zend_bool       enabled;
 	zend_arena     *mem;
 	php_coverage_t *start;
-	php_coverage_t *create;
 	php_coverage_t **next;
 	php_coverage_t **last;
 	HashTable       files;

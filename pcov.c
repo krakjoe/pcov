@@ -109,12 +109,6 @@ static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) {
 }
 
 static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *opline, zend_uchar opcode) { /* {{{ */
-	if (opline->lineno < 1) {
-		if (opline->opcode == ZEND_HANDLE_EXCEPTION) {
-			return 0;
-		}
-	}
-
 	return
 	    opcode == ZEND_NOP || 
 	    opcode == ZEND_OP_DATA || 
@@ -157,31 +151,17 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *oplin
 } /* }}} */
 
 static zend_always_inline php_coverage_t* php_pcov_create(zend_execute_data *execute_data) { /* {{{ */
-	php_coverage_t *coverage = (php_coverage_t*) zend_arena_alloc(&PCG(mem), sizeof(php_coverage_t));
+	php_coverage_t *create = (php_coverage_t*) zend_arena_alloc(&PCG(mem), sizeof(php_coverage_t));
 
-	coverage->file     = zend_string_copy(EX(func)->op_array.filename);
-	coverage->line     = EX(opline)->lineno;
-	coverage->next     = NULL;
+	create->file     = zend_string_copy(EX(func)->op_array.filename);
+	create->line     = EX(opline)->lineno;
+	create->next     = NULL;
 
-	return (PCG(create) = coverage);
-} /* }}} */
-
-static zend_always_inline zend_bool php_pcov_needs(zend_execute_data *execute_data) { /* {{{ */
-	if (php_pcov_ignored_opcode(EX(opline), EX(opline)->opcode)) {
-		return 0;
-	}
-
-	if (PCG(create) &&
-	    PCG(create)->file == EX(func)->op_array.filename &&
-	    PCG(create)->line == EX(opline)->lineno) {
-		return 0;
-	}
-
-	return php_pcov_wants(EX(func)->op_array.filename);
+	return create;
 } /* }}} */
 
 static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) { /* {{{ */
-	if (PCG(enabled) && php_pcov_needs(execute_data)) {
+	if (PCG(enabled) && php_pcov_wants(EX(func)->op_array.filename)) {
 		php_coverage_t *coverage = php_pcov_create(execute_data);
 
 		if (!PCG(start)) {
@@ -596,7 +576,6 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 
 	PCG(mem) = zend_arena_create(INI_INT("pcov.initial.memory"));
 	PCG(start) = NULL;
-	PCG(create) = NULL;
 } /* }}} */
 
 /* {{{ array \pcov\includes(void) */
