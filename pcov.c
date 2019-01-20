@@ -84,7 +84,7 @@ static PHP_GINIT_FUNCTION(pcov)
 	ZEND_SECURE_ZERO(pcov_globals, sizeof(zend_pcov_globals));
 }
 
-static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) {
+static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) { /* {{{ */
 	if (!PCG(directory)) {
 		return 1;
 	}
@@ -130,7 +130,7 @@ static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) {
 
 	zend_hash_add_empty_element(&PCG(ignores), filename);
 	return 0;
-}
+} /* }}} */
 
 static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *opline, zend_uchar opcode) { /* {{{ */
 	return
