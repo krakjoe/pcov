@@ -291,7 +291,7 @@ PHP_MSHUTDOWN_FUNCTION(pcov)
 }
 /* }}} */
 
-char *php_pcov_directory_defaults[] = { /* {{{ */
+const char *php_pcov_directory_defaults[] = { /* {{{ */
 	"src",
 	"lib",
 	"app",
@@ -299,26 +299,26 @@ char *php_pcov_directory_defaults[] = { /* {{{ */
 	NULL
 }; /* }}} */
 
-static zend_always_inline void php_pcov_setup_directory(char *directory) { /* {{{ */
-	char realpath[MAXPATHLEN];
+static  void php_pcov_setup_directory(char *directory) { /* {{{ */
+	char        realpath[MAXPATHLEN];
+	struct stat statbuf;
 
 	if (!directory || !*directory) {
-		const char *try;
+		const char** try = php_pcov_directory_defaults;
 
-_php_pcov_setup_directory_defaults:
-		try = php_pcov_directory_defaults[0];
-
-		while (try) {
-			if (VCWD_REALPATH(try, realpath)) {
+		while (*try) {
+			if (VCWD_REALPATH(*try, realpath) &&
+			    VCWD_STAT(realpath, &statbuf) == SUCCESS) {
 				directory = realpath;
 				break;
 			}
-			try++;	
+			try++;
 		}
-	} else if (VCWD_REALPATH(directory, realpath)) {
-		directory = realpath;
 	} else {
-		goto _php_pcov_setup_directory_defaults;
+		if (VCWD_REALPATH(directory, realpath) && 
+		    VCWD_STAT(realpath, &statbuf) == SUCCESS) {
+			directory = realpath;
+		}
 	}
 
 	PCG(directory) = zend_string_init(directory, strlen(directory), 0);
