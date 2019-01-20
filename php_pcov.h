@@ -46,22 +46,24 @@ struct _php_coverage_t {
 };
 
 ZEND_BEGIN_MODULE_GLOBALS(pcov)
-	zend_bool       enabled;
-	zend_arena     *mem;
-	php_coverage_t *start;
-	php_coverage_t **next;
-	php_coverage_t **last;
-	HashTable       files;
-	HashTable       ignores;
-	HashTable       wants;
-	HashTable       discovered;
-	zend_string    *directory;
-	Bucket         *includes;
+	zend_bool         enabled;
+	zend_arena       *mem;
+	php_coverage_t   *start;
+	php_coverage_t  **next;
+	php_coverage_t  **last;
+	HashTable         files;
+	HashTable         ignores;
+	HashTable         wants;
+	HashTable         discovered;
+	zend_string      *directory;
+	pcre_cache_entry *exclude;
+	Bucket           *includes;
 	struct {
-		char   *directory;
 		zend_bool enabled;
 		zend_long memory;
 		zend_long files;
+		char     *directory;
+		char     *exclude;
 	} ini;
 ZEND_END_MODULE_GLOBALS(pcov)
 
