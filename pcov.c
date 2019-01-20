@@ -336,7 +336,9 @@ static zend_always_inline void php_pcov_setup_exclude(char *exclude) { /* {{{ */
 		php_pcre_pce_incref(PCG(exclude));
 	}
 #else
-	PCG(exclude)->refcount++;
+	if (PCG(exclude)) {
+		PCG(exclude)->refcount++;
+	}
 #endif
 
 	zend_string_release(pattern);
@@ -399,7 +401,9 @@ PHP_RSHUTDOWN_FUNCTION(pcov)
 		php_pcre_pce_decref(PCG(exclude));
 	}
 #else
-	PCG(exclude)->refcount--;
+	if (PCG(exclude)) {
+		PCG(exclude)->refcount--;
+	}
 #endif
 
 	return SUCCESS;
