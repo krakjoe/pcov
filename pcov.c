@@ -45,6 +45,11 @@
 #	define GC_ADDREF(g) ++GC_REFCOUNT(g)
 #endif
 
+#if PHP_VERSION_ID < 70300
+#define php_pcre_pce_incref(c) (c)->refcount++
+#define php_pcre_pce_decref(c) (c)->refcount--
+#endif
+
 static zval php_pcov_uncovered;
 static zval php_pcov_covered;
 
@@ -331,15 +336,9 @@ static zend_always_inline void php_pcov_setup_exclude(char *exclude) { /* {{{ */
 
 	PCG(exclude) = pcre_get_compiled_regex_cache(pattern);
 
-#if PHP_VERSION_ID >= 70300
 	if (PCG(exclude)) {
 		php_pcre_pce_incref(PCG(exclude));
 	}
-#else
-	if (PCG(exclude)) {
-		PCG(exclude)->refcount++;
-	}
-#endif
 
 	zend_string_release(pattern);
 } /* }}} */
@@ -396,15 +395,9 @@ PHP_RSHUTDOWN_FUNCTION(pcov)
 		zend_string_release(PCG(directory));
 	}
 
-#if PHP_VERSION_ID >= 70300
 	if (PCG(exclude)) {
 		php_pcre_pce_decref(PCG(exclude));
 	}
-#else
-	if (PCG(exclude)) {
-		PCG(exclude)->refcount--;
-	}
-#endif
 
 	return SUCCESS;
 }
