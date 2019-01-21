@@ -387,7 +387,7 @@ PHP_RSHUTDOWN_FUNCTION(pcov)
 		php_coverage_t *coverage = PCG(start);
 		do {
 			zend_string_release(coverage->file);
-		} while (coverage = coverage->next);
+		} while ((coverage = coverage->next));
 	}
 
 	zend_hash_destroy(&PCG(files));
@@ -459,7 +459,7 @@ static zend_always_inline void php_pcov_report(php_coverage_t *coverage, zval *f
 				Z_LVAL_P(hit) = PHP_PCOV_COVERED;
 			}
 		}
-	} while (coverage = coverage->next);
+	} while ((coverage = coverage->next));
 } /* }}} */
 
 static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *return_value) { /* {{{ */
@@ -667,7 +667,7 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 		php_coverage_t *coverage = PCG(start);
 		do {
 			zend_string_release(coverage->file);
-		} while (coverage = coverage->next);
+		} while ((coverage = coverage->next));
 	}
 
 	if (files) {
@@ -729,7 +729,7 @@ PHP_NAMED_FUNCTION(php_pcov_memory)
 
 	do {
 		Z_LVAL_P(return_value) += (arena->end - arena->ptr);
-	} while (arena = arena->prev);
+	} while ((arena = arena->prev));
 } /* }}} */
 
 /* {{{ */
