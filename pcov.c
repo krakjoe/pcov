@@ -50,6 +50,12 @@
 #define php_pcre_pce_decref(c) (c)->refcount--
 #endif
 
+#define PHP_PCOV_API_ENABLED_GUARD() do { \
+	if (!INI_BOOL("pcov.enabled")) { \
+		return; \
+	} \
+} while (0);
+
 static zval php_pcov_uncovered;
 static zval php_pcov_covered;
 
@@ -408,7 +414,7 @@ PHP_RSHUTDOWN_FUNCTION(pcov)
 PHP_MINFO_FUNCTION(pcov)
 {
 	php_info_print_table_start();
-	php_info_print_table_header(2, "pcov support", "enabled");
+	php_info_print_table_header(2, "pcov support", INI_BOOL("pcov.enabled") ? "enabled" : "disabled");
 	php_info_print_table_end();
 }
 /* }}} */
@@ -533,6 +539,8 @@ PHP_NAMED_FUNCTION(php_pcov_collect)
 		return;
 	}
 
+	PHP_PCOV_API_ENABLED_GUARD();
+
 	if (PCOV_FILTER_ALL != type &&
 	    PCOV_FILTER_INCLUDE != type &&
 	    PCOV_FILTER_EXCLUDE != type) {
@@ -601,9 +609,7 @@ PHP_NAMED_FUNCTION(php_pcov_start)
 		return;
 	}
 
-	if (!INI_BOOL("pcov.enabled")) {
-		return;
-	}
+	PHP_PCOV_API_ENABLED_GUARD();
 
 	PCG(enabled) = 1;
 } /* }}} */
@@ -615,9 +621,7 @@ PHP_NAMED_FUNCTION(php_pcov_stop)
 		return;
 	}
 
-	if (!INI_BOOL("pcov.enabled")) {
-		return;
-	}
+	PHP_PCOV_API_ENABLED_GUARD();
 
 	PCG(enabled) = 0;
 } /* }}} */
@@ -631,9 +635,7 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 		return;
 	}
 
-	if (!INI_BOOL("pcov.enabled")) {
-		return;
-	}
+	PHP_PCOV_API_ENABLED_GUARD();
 
 	if (PCG(start)) {
 		php_coverage_t *coverage = PCG(start);
@@ -662,6 +664,8 @@ PHP_NAMED_FUNCTION(php_pcov_includes)
 		return;	
 	}
 
+	PHP_PCOV_API_ENABLED_GUARD();
+
 	array_init(return_value);
 
 	if (!PCG(includes)) {
@@ -688,11 +692,13 @@ PHP_NAMED_FUNCTION(php_pcov_includes)
 PHP_NAMED_FUNCTION(php_pcov_memory) 
 {
 	zend_arena *arena = PCG(mem);
-	
+
 	if (zend_parse_parameters_none() != SUCCESS) {
 		return;
 	}
-	
+
+	PHP_PCOV_API_ENABLED_GUARD();
+
 	ZVAL_LONG(return_value, 0);
 
 	do {
