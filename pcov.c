@@ -413,8 +413,34 @@ PHP_RSHUTDOWN_FUNCTION(pcov)
  */
 PHP_MINFO_FUNCTION(pcov)
 {
+	char info[64];
+	char *directory = INI_STR("pcov.directory");
+	char *exclude   = INI_STR("pcov.exclude");
+
 	php_info_print_table_start();
-	php_info_print_table_header(2, "pcov support", INI_BOOL("pcov.enabled") ? "enabled" : "disabled");
+
+	php_info_print_table_header(2,
+		"PCOV support",
+		INI_BOOL("pcov.enabled")  ? "Enabled" : "Disabled");
+	php_info_print_table_row(2,
+		"pcov.directory",
+		directory && *directory ? directory : "auto");
+	php_info_print_table_row(2,
+		"pcov.exclude",
+		exclude   && *exclude   ? exclude : "none" );
+
+	snprintf(info, sizeof(info),
+		ZEND_LONG_FMT " bytes",
+		(zend_long) INI_INT("pcov.initial.memory"));
+	php_info_print_table_row(2,
+		"pcov.initial.memory", info);
+
+	snprintf(info, sizeof(info),
+		ZEND_LONG_FMT,
+		(zend_long) INI_INT("pcov.initial.files"));
+	php_info_print_table_row(2,
+		"pcov.initial.files", info);
+
 	php_info_print_table_end();
 }
 /* }}} */
