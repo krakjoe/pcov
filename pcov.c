@@ -423,6 +423,9 @@ PHP_MINFO_FUNCTION(pcov)
 		"PCOV support",
 		INI_BOOL("pcov.enabled")  ? "Enabled" : "Disabled");
 	php_info_print_table_row(2,
+		"PCOV version",
+		PHP_PCOV_VERSION);
+	php_info_print_table_row(2,
 		"pcov.directory",
 		directory && *directory ? directory : "auto");
 	php_info_print_table_row(2,
