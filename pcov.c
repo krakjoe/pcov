@@ -486,24 +486,58 @@ static zend_always_inline void php_pcov_report(php_coverage_t *coverage, zval *f
 	} while ((coverage = coverage->next));
 } /* }}} */
 
+static zend_always_inline void php_pcov_discover_code_range(zend_op *opline, zend_op *end, zval *return_value) { /* {{{ */
+	while(opline < end) {
+		if (php_pcov_ignored_opcode(opline, opline->opcode)) {
+			opline++;
+			continue;
+		}
+
+		if (!zend_hash_index_exists(Z_ARRVAL_P(return_value), opline->lineno)) {
+			zend_hash_index_add(
+				Z_ARRVAL_P(return_value), 
+				opline->lineno, &php_pcov_uncovered);
+		}
+
+		if ((opline +0)->opcode == ZEND_NEW && 
+		    (opline +1)->opcode == ZEND_DO_FCALL) {
+			opline++;
+		}
+
+		opline++;
+	}
+} /* }}} */
+
 static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *return_value) { /* {{{ */
 	zend_cfg cfg;
 	zend_basic_block *block;
-	zend_op *limit;
+	zend_op *limit = ops->opcodes + ops->last;
 	int i = 0;
 
 	if (ops->fn_flags & ZEND_ACC_ABSTRACT) {
 		return;
 	}
 
-	memset(&cfg, 0, sizeof(zend_cfg));
+	if (!ops->function_name) {
+		/* no need for a cfg for main script instructions */
+		zend_op *opline = ops->opcodes;
 
-	limit = ops->opcodes + ops->last;
+		if ((limit-1)->opcode == ZEND_RETURN && 
+		    (limit-1)->extended_value == -1) {
+			limit--;
+		}
+
+		php_pcov_discover_code_range(opline, limit, return_value);
+		return;
+	}
+
+	memset(&cfg, 0, sizeof(zend_cfg));
 
 	zend_build_cfg(&PCG(mem), ops, ZEND_RT_CONSTANTS, &cfg);
 
 	for (block = cfg.blocks, i = 0; i < cfg.blocks_count; i++, block++) {
-		zend_op *opline, *end;
+		zend_op *opline = ops->opcodes + block->start, 
+			*end = opline + block->len;
 
 		if (!(block->flags & ZEND_BB_REACHABLE)) {
 			/*
@@ -514,28 +548,7 @@ static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *
 			continue;
 		}
 
-		opline = ops->opcodes + block->start;
-		end    = opline + block->len;
-
-		while (opline < end) {
-			if (php_pcov_ignored_opcode(opline, opline->opcode)) {
-				opline++;
-				continue;
-			}
-
-			if (!zend_hash_index_exists(Z_ARRVAL_P(return_value), opline->lineno)) {
-				zend_hash_index_add(
-					Z_ARRVAL_P(return_value), 
-					opline->lineno, &php_pcov_uncovered);
-			}
-
-			if ((opline +0)->opcode == ZEND_NEW && 
-			    (opline +1)->opcode == ZEND_DO_FCALL) {
-				opline++;
-			}
-
-			opline++;
-		}
+		php_pcov_discover_code_range(opline, end, return_value);
 
 		if (block == cfg.blocks && opline == limit) {
 			/*

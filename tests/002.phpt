@@ -22,7 +22,7 @@ var_dump(\pcov\collect());
 --EXPECTF--
 array(1) {
   ["%s%e002.php"]=>
-  array(9) {
+  array(8) {
     [2]=>
     int(-1)
     [3]=>
@@ -38,8 +38,6 @@ array(1) {
     [11]=>
     int(-1)
     [13]=>
-    int(-1)
-    [15]=>
     int(-1)
   }
 }
