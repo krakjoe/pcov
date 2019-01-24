@@ -408,6 +408,7 @@ PHP_RSHUTDOWN_FUNCTION(pcov)
 	zend_hash_destroy(&PCG(ignores));
 	zend_hash_destroy(&PCG(wants));
 	zend_hash_destroy(&PCG(discovered));
+	zend_hash_destroy(&PCG(waiting));
 
 	zend_arena_destroy(PCG(mem));
 
@@ -488,8 +489,16 @@ static zend_always_inline void php_pcov_report(php_coverage_t *coverage, zval *f
 static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *return_value) { /* {{{ */
 	zend_cfg cfg;
 	zend_basic_block *block;
-	zend_op *limit = ops->opcodes + ops->last;
+	zend_op *limit;
 	int i = 0;
+
+	if (ops->fn_flags & ZEND_ACC_ABSTRACT) {
+		return;
+	}
+
+	memset(&cfg, 0, sizeof(zend_cfg));
+
+	limit = ops->opcodes + ops->last;
 
 	zend_build_cfg(&PCG(mem), ops, ZEND_RT_CONSTANTS, &cfg);
 
