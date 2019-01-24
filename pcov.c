@@ -415,6 +415,7 @@ PHP_RSHUTDOWN_FUNCTION(pcov)
 
 	if (zend_compile_file == php_pcov_compile_file) {
 		zend_compile_file = zend_compile_file_function;
+		zend_compile_file_function = NULL;
 	}
 
 	return SUCCESS;
