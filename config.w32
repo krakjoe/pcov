@@ -4,6 +4,13 @@
 ARG_ENABLE("pcov", "enable php coverage support", "no");
 
 if (PHP_PCOV != "no") {
-	EXTENSION("pcov", "pcov.c", PHP_PCOV_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
+	EXTENSION("pcov", "pcov.c", PHP_PCOV_SHARED, 
+		"/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 /I" + configure_module_dirname + "/cfg");
+        ADD_SOURCES(
+		configure_module_dirname + "/cfg",
+		"zend_cfg.c", 
+		"pcov"
+	);
+
 }
 

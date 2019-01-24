@@ -28,6 +28,7 @@
 #include "ext/pcre/php_pcre.h"
 
 #include "zend_arena.h"
+#include "zend_cfg.h"
 #include "zend_exceptions.h"
 #include "zend_vm.h"
 #include "zend_vm_opcodes.h"
@@ -38,8 +39,8 @@
 #define PCOV_FILTER_INCLUDE 1
 #define PCOV_FILTER_EXCLUDE 2
 
-#define PHP_PCOV_UNCOVERED -1
-#define PHP_PCOV_COVERED    1
+#define PHP_PCOV_UNCOVERED   -1
+#define PHP_PCOV_COVERED      1
 
 #ifndef GC_ADDREF
 #	define GC_ADDREF(g) ++GC_REFCOUNT(g)
@@ -80,6 +81,10 @@ PHP_INI_BEGIN()
 		"pcov.initial.memory", "65336", 
 		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateLong, 
 		ini.memory, zend_pcov_globals, pcov_globals)
+	STD_PHP_INI_ENTRY(
+		"pcov.initial.cfg", "65336", 
+		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateLong, 
+		ini.cfg, zend_pcov_globals, pcov_globals)
 	STD_PHP_INI_ENTRY(
 		"pcov.initial.files", "64", 
 		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateLong, 
@@ -265,7 +270,7 @@ void php_pcov_files_dtor(zval *zv) { /* {{{ */
  */
 PHP_MINIT_FUNCTION(pcov)
 {
-	REGISTER_NS_LONG_CONSTANT("pcov", "all",         PCOV_FILTER_ALL,    CONST_CS|CONST_PERSISTENT);
+	REGISTER_NS_LONG_CONSTANT("pcov", "all",         PCOV_FILTER_ALL,     CONST_CS|CONST_PERSISTENT);
 	REGISTER_NS_LONG_CONSTANT("pcov", "inclusive",   PCOV_FILTER_INCLUDE, CONST_CS|CONST_PERSISTENT);
 	REGISTER_NS_LONG_CONSTANT("pcov", "exclusive",   PCOV_FILTER_EXCLUDE, CONST_CS|CONST_PERSISTENT);
 
@@ -276,8 +281,8 @@ PHP_MINIT_FUNCTION(pcov)
 		zend_execute_ex            = php_pcov_execute_ex;
 	}
 
-	ZVAL_LONG(&php_pcov_uncovered, PHP_PCOV_UNCOVERED);
-	ZVAL_LONG(&php_pcov_covered,   PHP_PCOV_COVERED);
+	ZVAL_LONG(&php_pcov_uncovered,   PHP_PCOV_UNCOVERED);
+	ZVAL_LONG(&php_pcov_covered,     PHP_PCOV_COVERED);
 
 	return SUCCESS;
 }
@@ -371,6 +376,10 @@ PHP_RINIT_FUNCTION(pcov)
 	php_pcov_setup_directory(INI_STR("pcov.directory"));
 	php_pcov_setup_exclude(INI_STR("pcov.exclude"));
 
+#ifdef ZEND_COMPILE_NO_JUMPTABLES
+	CG(compiler_options) |= ZEND_COMPILE_NO_JUMPTABLES;
+#endif
+
 	return SUCCESS;
 }
 /* }}} */
@@ -436,6 +445,12 @@ PHP_MINFO_FUNCTION(pcov)
 		"pcov.initial.memory", info);
 
 	snprintf(info, sizeof(info),
+		ZEND_LONG_FMT " bytes",
+		(zend_long) INI_INT("pcov.initial.cfg"));
+	php_info_print_table_row(2,
+		"pcov.initial.cfg", info);
+
+	snprintf(info, sizeof(info),
 		ZEND_LONG_FMT,
 		(zend_long) INI_INT("pcov.initial.files"));
 	php_info_print_table_row(2,
@@ -463,42 +478,55 @@ static zend_always_inline void php_pcov_report(php_coverage_t *coverage, zval *f
 } /* }}} */
 
 static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *return_value) { /* {{{ */
-	zend_op       *opline = ops->opcodes, 
-		      *end    = ops->opcodes + ops->last;
+	zend_cfg cfg;
+	zend_basic_block *block;
+	zend_op *limit = ops->opcodes + ops->last;
+	int i = 0;
 
-	if (ops->last >= 1 && 
-		(((end - 1)->opcode == ZEND_RETURN || 
-		  (end - 1)->opcode == ZEND_RETURN_BY_REF || 
-		  (end - 1)->opcode == ZEND_GENERATOR_RETURN) && 
-	        ((ops->last > 1 && 
-		 ((end - 2)->opcode == ZEND_RETURN || 
-		  (end - 2)->opcode == ZEND_RETURN_BY_REF || 
-		  (end - 2)->opcode == ZEND_GENERATOR_RETURN || 
-		  (end - 2)->opcode == ZEND_THROW ||
-		  (end - 2)->opcode == ZEND_VERIFY_RETURN_TYPE))
-	  || ops->function_name == NULL || (end - 1)->extended_value == -1))) {
-		end -= (end - 2)->opcode == ZEND_VERIFY_RETURN_TYPE ?
-				2 : 1;
-	}
+	zend_build_cfg(&PCG(mem), ops, ZEND_RT_CONSTANTS, &cfg);
 
-	while (opline < end) {
-		if (php_pcov_ignored_opcode(opline, opline->opcode)) {
-			opline++;
+	for (block = cfg.blocks, i = 0; i < cfg.blocks_count; i++, block++) {
+		zend_op *opline, *end;
+
+		if (!(block->flags & ZEND_BB_REACHABLE)) {
+			/*
+			* Note that, we don't care about unreachable blocks
+			* that would be removed by opcache, because it would
+			* create different reports depending on configuration
+			*/
 			continue;
 		}
 
-		if (!zend_hash_index_exists(Z_ARRVAL_P(return_value), opline->lineno)) {
-			zend_hash_index_add(
-				Z_ARRVAL_P(return_value), 
-				opline->lineno, &php_pcov_uncovered);
-		}
+		opline = ops->opcodes + block->start;
+		end    = opline + block->len;
 
-		if ((opline +0)->opcode == ZEND_NEW && 
-		    (opline +1)->opcode == ZEND_DO_FCALL) {
+		while (opline < end) {
+			if (php_pcov_ignored_opcode(opline, opline->opcode)) {
+				opline++;
+				continue;
+			}
+
+			if (!zend_hash_index_exists(Z_ARRVAL_P(return_value), opline->lineno)) {
+				zend_hash_index_add(
+					Z_ARRVAL_P(return_value), 
+					opline->lineno, &php_pcov_uncovered);
+			}
+
+			if ((opline +0)->opcode == ZEND_NEW && 
+			    (opline +1)->opcode == ZEND_DO_FCALL) {
+				opline++;
+			}
+
 			opline++;
 		}
 
-		opline++;
+		if (block == cfg.blocks && opline == limit) {
+			/*
+			* If the first basic block finishes at the end of the op array
+			* then we don't care about subsequent blocks
+			*/
+			break;
+		}
 	}
 } /* }}} */
 
