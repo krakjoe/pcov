@@ -9,8 +9,7 @@ A self contained [CodeCoverage](https://github.com/sebastianbergmann/php-code-co
 Requirements
 ============
 
-  * PHP 7
-  * A care free attitude to life
+  * PHP 7.1+
 
 API
 ===
@@ -161,4 +160,4 @@ Using the Zend developed CFG code for Optimizer, pcov generates a control flow g
 
 Pre 7.2.15, a switch jump table optimization stops phpdbg and pcov from reporting the coverage inside switch (long, string expr) correctly.
 
-__From PHP 7.2.15 pcov and xdebug will generate as near as makes no difference the same report: The line count may differ because of additional opcodes ignored by pcov that would bloat traces.__
+__From PHP 7.2.15 pcov 1.0.0 and xdebug will generate as near as makes no difference the same report: The line count may differ because of additional opcodes ignored by pcov that would bloat traces.__
