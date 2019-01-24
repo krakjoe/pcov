@@ -707,8 +707,6 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 	}
 
 	if (files) {
-		PCG(includes) = NULL;
-
 		zend_hash_clean(&PCG(files));
 		zend_hash_clean(&PCG(discovered));
 	}
@@ -720,8 +718,8 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 	PCG(start) = NULL;
 } /* }}} */
 
-/* {{{ array \pcov\includes(void) */
-PHP_NAMED_FUNCTION(php_pcov_includes) 
+/* {{{ array \pcov\waiting(void) */
+PHP_NAMED_FUNCTION(php_pcov_waiting) 
 {
 	zend_string *waiting;
 
@@ -780,7 +778,7 @@ const zend_function_entry php_pcov_functions[] = {
 	ZEND_NS_FENTRY("pcov", stop,       php_pcov_stop,          php_pcov_no_arginfo, 0)
 	ZEND_NS_FENTRY("pcov", collect,    php_pcov_collect,       php_pcov_collect_arginfo, 0)
 	ZEND_NS_FENTRY("pcov", clear,      php_pcov_clear,         php_pcov_clear_arginfo, 0)
-	ZEND_NS_FENTRY("pcov", includes,   php_pcov_includes,      php_pcov_no_arginfo, 0)
+	ZEND_NS_FENTRY("pcov", waiting,    php_pcov_waiting,       php_pcov_no_arginfo, 0)
 	ZEND_NS_FENTRY("pcov", memory,     php_pcov_memory,        php_pcov_no_arginfo, 0)
 	PHP_FE_END
 };

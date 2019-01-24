@@ -45,7 +45,7 @@ function \pcov\clear(bool $files = false) : void;
 /*
 * Shall return list of files waiting to be collected
 */
-function \pcov\includes() : array;
+function \pcov\waiting() : array;
 
 /*
 * Shall return the current size of the trace and cfg arena
