@@ -219,6 +219,7 @@ static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) { 
 
 zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
 	zend_op_array *result = zend_compile_file_function(fh, type);
+	zend_op_array *mapped;
 
 	if (!result || !result->filename || !php_pcov_wants(result->filename)) {
 		return result;
@@ -228,12 +229,23 @@ zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
 		return result;
 	}
 
-	zend_hash_add_mem(
+	mapped = (zend_op_array*) zend_hash_add_mem(
 			&PCG(files), 
 			result->filename, 
 			result, sizeof(zend_op_array));
-	
-	function_add_ref((zend_function*)result);
+
+#if PHP_VERSION_ID >= 70400
+	if (result->refcount) {
+		(*result->refcount)++;
+	}
+	if (result->static_variables) {
+		if (!(GC_FLAGS(result->static_variables) & IS_ARRAY_IMMUTABLE)) {
+			GC_ADDREF(result->static_variables);
+		}
+	}
+#else
+	function_add_ref(result);
+#endif
 
 	return result;
 } /* }}} */
