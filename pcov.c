@@ -61,6 +61,7 @@ static zval php_pcov_uncovered;
 static zval php_pcov_covered;
 
 void (*zend_execute_ex_function)(zend_execute_data *execute_data);
+zend_op_array* (*zend_compile_file_function)(zend_file_handle *fh, int type) = NULL;
 
 ZEND_DECLARE_MODULE_GLOBALS(pcov)
 
@@ -216,42 +217,29 @@ static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) { 
 	return zend_vm_call_opcode_handler(execute_data);
 } /* }}} */
 
-static zend_always_inline void php_pcov_cache(zend_op_array *result) { /* {{{ */
-	zend_op_array *mapped;
+zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
+	zend_op_array *result = zend_compile_file_function(fh, type);
 
-	if (!result->filename || !php_pcov_wants(result->filename)) {
-		return;
+	if (!result || !result->filename || !php_pcov_wants(result->filename)) {
+		return result;
 	}
 
 	if (zend_hash_exists(&PCG(files), result->filename)) {
-		return;
+		return result;
 	}
 
-	mapped = (zend_op_array*) zend_hash_add_mem(
-				&PCG(files), 
-				result->filename, 
-				result, sizeof(zend_op_array));
+	zend_hash_add_mem(
+			&PCG(files), 
+			result->filename, 
+			result, sizeof(zend_op_array));
+	
+	function_add_ref((zend_function*)result);
 
-	if (mapped->static_variables) {
-		if (!(GC_FLAGS(mapped->static_variables) & IS_ARRAY_IMMUTABLE)) {
-			GC_ADDREF(mapped->static_variables);
-		}
-	}
-
-	mapped->refcount = NULL;
-#if PHP_VERSION_ID >= 70400
-	ZEND_MAP_PTR_INIT(mapped->run_time_cache, NULL);
-#else
-	mapped->run_time_cache = NULL;
-#endif
+	return result;
 } /* }}} */
 
 void php_pcov_execute_ex(zend_execute_data *execute_data) { /* {{{ */
 	int zrc        = 0;
-
-	if (!EX(func)->common.function_name) {
-		php_pcov_cache((zend_op_array*) EX(func));
-	}
 
 	while (1) {
 		zrc = php_pcov_trace(execute_data);
@@ -385,6 +373,11 @@ PHP_RINIT_FUNCTION(pcov)
 	CG(compiler_options) |= ZEND_COMPILE_NO_JUMPTABLES;
 #endif
 
+	if  (!zend_compile_file_function) {
+		zend_compile_file_function = zend_compile_file;
+		zend_compile_file          = php_pcov_compile_file;
+	}
+
 	return SUCCESS;
 }
 /* }}} */
@@ -418,6 +411,10 @@ PHP_RSHUTDOWN_FUNCTION(pcov)
 
 	if (PCG(exclude)) {
 		php_pcre_pce_decref(PCG(exclude));
+	}
+
+	if (zend_compile_file == php_pcov_compile_file) {
+		zend_compile_file = zend_compile_file_function;
 	}
 
 	return SUCCESS;
@@ -518,22 +515,9 @@ static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *
 		return;
 	}
 
-	if (!ops->function_name) {
-		/* no need for a cfg for main script instructions */
-		zend_op *opline = ops->opcodes;
-
-		if ((limit-1)->opcode == ZEND_RETURN && 
-		    (limit-1)->extended_value == -1) {
-			limit--;
-		}
-
-		php_pcov_discover_code_range(opline, limit, return_value);
-		return;
-	}
-
 	memset(&cfg, 0, sizeof(zend_cfg));
 
-	zend_build_cfg(&PCG(mem), ops, ZEND_RT_CONSTANTS, &cfg);
+	zend_build_cfg(&PCG(mem), ops,  ZEND_RT_CONSTANTS, &cfg);
 
 	for (block = cfg.blocks, i = 0; i < cfg.blocks_count; i++, block++) {
 		zend_op *opline = ops->opcodes + block->start, 
