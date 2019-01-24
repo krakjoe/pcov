@@ -43,8 +43,7 @@ function \pcov\collect(int $type = \pcov\all, array $filter = []) : array;
 function \pcov\clear(bool $files = false) : void;
 
 /*
-* Shall return a list of included files
-* Note: after the first invocation will return newly included files only
+* Shall return list of files waiting to be collected
 */
 function \pcov\includes() : array;
 

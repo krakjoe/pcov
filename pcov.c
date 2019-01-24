@@ -189,6 +189,10 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *oplin
 static zend_always_inline php_coverage_t* php_pcov_create(zend_execute_data *execute_data) { /* {{{ */
 	php_coverage_t *create = (php_coverage_t*) zend_arena_alloc(&PCG(mem), sizeof(php_coverage_t));
 
+	if (!zend_hash_exists(&PCG(waiting), EX(func)->op_array.filename)) {
+		zend_hash_add_empty_element(&PCG(waiting), EX(func)->op_array.filename);
+	}
+
 	create->file     = zend_string_copy(EX(func)->op_array.filename);
 	create->line     = EX(opline)->lineno;
 	create->next     = NULL;
@@ -369,6 +373,7 @@ PHP_RINIT_FUNCTION(pcov)
 	PCG(mem) = zend_arena_create(INI_INT("pcov.initial.memory"));
 
 	zend_hash_init(&PCG(files),      INI_INT("pcov.initial.files"), NULL, php_pcov_files_dtor, 0);
+	zend_hash_init(&PCG(waiting),    INI_INT("pcov.initial.files"), NULL, NULL, 0);
 	zend_hash_init(&PCG(ignores),    INI_INT("pcov.initial.files"), NULL, NULL, 0);
 	zend_hash_init(&PCG(wants),      INI_INT("pcov.initial.files"), NULL, NULL, 0);
 	zend_hash_init(&PCG(discovered), INI_INT("pcov.initial.files"), NULL, ZVAL_PTR_DTOR, 0);
@@ -709,6 +714,7 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 	}
 
 	zend_arena_destroy(PCG(mem));
+	zend_hash_clean(&PCG(waiting));
 
 	PCG(mem) = zend_arena_create(INI_INT("pcov.initial.memory"));
 	PCG(start) = NULL;
@@ -717,6 +723,8 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 /* {{{ array \pcov\includes(void) */
 PHP_NAMED_FUNCTION(php_pcov_includes) 
 {
+	zend_string *waiting;
+
 	if (zend_parse_parameters_none() != SUCCESS) {
 		return;	
 	}
@@ -725,24 +733,11 @@ PHP_NAMED_FUNCTION(php_pcov_includes)
 
 	array_init(return_value);
 
-	if (!PCG(includes)) {
-		PCG(includes) = EG(included_files).arData;
-	}
-
-	{
-		Bucket *bucket = PCG(includes);
-		Bucket *end = EG(included_files).arData + 
-			      EG(included_files).nNumUsed;
-
-		while (bucket < end) {
-			add_next_index_str(
-				return_value, 
-				zend_string_copy(bucket->key));
-			bucket++;
-		}
-
-		PCG(includes) = end;
-	}
+	ZEND_HASH_FOREACH_STR_KEY(&PCG(waiting), waiting) {
+		add_next_index_str(
+			return_value, 
+			zend_string_copy(waiting));
+	} ZEND_HASH_FOREACH_END();
 } /* }}} */
 
 /* {{{ int \pcov\memory(void) */

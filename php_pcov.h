@@ -51,13 +51,13 @@ ZEND_BEGIN_MODULE_GLOBALS(pcov)
 	php_coverage_t   *start;
 	php_coverage_t  **next;
 	php_coverage_t  **last;
+	HashTable         waiting;
 	HashTable         files;
 	HashTable         ignores;
 	HashTable         wants;
 	HashTable         discovered;
 	zend_string      *directory;
 	pcre_cache_entry *exclude;
-	Bucket           *includes;
 	struct {
 		zend_bool enabled;
 		zend_long memory;
