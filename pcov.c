@@ -244,7 +244,7 @@ zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
 		}
 	}
 #else
-	function_add_ref(result);
+	function_add_ref((zend_function*)result);
 #endif
 
 	return result;
