@@ -83,10 +83,6 @@ PHP_INI_BEGIN()
 		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateLong, 
 		ini.memory, zend_pcov_globals, pcov_globals)
 	STD_PHP_INI_ENTRY(
-		"pcov.initial.cfg", "65336", 
-		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateLong, 
-		ini.cfg, zend_pcov_globals, pcov_globals)
-	STD_PHP_INI_ENTRY(
 		"pcov.initial.files", "64", 
 		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateLong, 
 		ini.files, zend_pcov_globals, pcov_globals)
