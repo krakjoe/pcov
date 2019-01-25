@@ -466,12 +466,6 @@ PHP_MINFO_FUNCTION(pcov)
 		"pcov.initial.memory", info);
 
 	snprintf(info, sizeof(info),
-		ZEND_LONG_FMT " bytes",
-		(zend_long) INI_INT("pcov.initial.cfg"));
-	php_info_print_table_row(2,
-		"pcov.initial.cfg", info);
-
-	snprintf(info, sizeof(info),
 		ZEND_LONG_FMT,
 		(zend_long) INI_INT("pcov.initial.files"));
 	php_info_print_table_row(2,
