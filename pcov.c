@@ -488,28 +488,6 @@ static zend_always_inline void php_pcov_report(php_coverage_t *coverage, zval *f
 	} while ((coverage = coverage->next));
 } /* }}} */
 
-static zend_always_inline void php_pcov_discover_code_range(zend_op *opline, zend_op *end, zval *return_value) { /* {{{ */
-	while(opline < end) {
-		if (php_pcov_ignored_opcode(opline, opline->opcode)) {
-			opline++;
-			continue;
-		}
-
-		if (!zend_hash_index_exists(Z_ARRVAL_P(return_value), opline->lineno)) {
-			zend_hash_index_add(
-				Z_ARRVAL_P(return_value), 
-				opline->lineno, &php_pcov_uncovered);
-		}
-
-		if ((opline +0)->opcode == ZEND_NEW && 
-		    (opline +1)->opcode == ZEND_DO_FCALL) {
-			opline++;
-		}
-
-		opline++;
-	}
-} /* }}} */
-
 static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *return_value) { /* {{{ */
 	zend_cfg cfg;
 	zend_basic_block *block;
@@ -537,7 +515,25 @@ static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *
 			continue;
 		}
 
-		php_pcov_discover_code_range(opline, end, return_value);
+		while(opline < end) {
+			if (php_pcov_ignored_opcode(opline, opline->opcode)) {
+				opline++;
+				continue;
+			}
+
+			if (!zend_hash_index_exists(Z_ARRVAL_P(return_value), opline->lineno)) {
+				zend_hash_index_add(
+					Z_ARRVAL_P(return_value), 
+					opline->lineno, &php_pcov_uncovered);
+			}
+
+			if ((opline +0)->opcode == ZEND_NEW && 
+			    (opline +1)->opcode == ZEND_DO_FCALL) {
+				opline++;
+			}
+
+			opline++;
+		}
 
 		if (block == cfg.blocks && opline == limit) {
 			/*
