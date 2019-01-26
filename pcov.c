@@ -314,7 +314,7 @@ const char *php_pcov_directory_defaults[] = { /* {{{ */
 
 static  void php_pcov_setup_directory(char *directory) { /* {{{ */
 	char        realpath[MAXPATHLEN];
-	struct stat statbuf;
+	zend_stat_t statbuf;
 
 	if (!directory || !*directory) {
 		const char** try = php_pcov_directory_defaults;
