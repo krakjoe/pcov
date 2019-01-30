@@ -28,6 +28,7 @@
 #include "ext/pcre/php_pcre.h"
 
 #include "zend_arena.h"
+#include "zend_cfg.h"
 #include "zend_exceptions.h"
 #include "zend_vm.h"
 #include "zend_vm_opcodes.h"
@@ -38,8 +39,8 @@
 #define PCOV_FILTER_INCLUDE 1
 #define PCOV_FILTER_EXCLUDE 2
 
-#define PHP_PCOV_UNCOVERED -1
-#define PHP_PCOV_COVERED    1
+#define PHP_PCOV_UNCOVERED   -1
+#define PHP_PCOV_COVERED      1
 
 #ifndef GC_ADDREF
 #	define GC_ADDREF(g) ++GC_REFCOUNT(g)
@@ -60,6 +61,7 @@ static zval php_pcov_uncovered;
 static zval php_pcov_covered;
 
 void (*zend_execute_ex_function)(zend_execute_data *execute_data);
+zend_op_array* (*zend_compile_file_function)(zend_file_handle *fh, int type) = NULL;
 
 ZEND_DECLARE_MODULE_GLOBALS(pcov)
 
@@ -184,6 +186,10 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *oplin
 static zend_always_inline php_coverage_t* php_pcov_create(zend_execute_data *execute_data) { /* {{{ */
 	php_coverage_t *create = (php_coverage_t*) zend_arena_alloc(&PCG(mem), sizeof(php_coverage_t));
 
+	if (!zend_hash_exists(&PCG(waiting), EX(func)->op_array.filename)) {
+		zend_hash_add_empty_element(&PCG(waiting), EX(func)->op_array.filename);
+	}
+
 	create->file     = zend_string_copy(EX(func)->op_array.filename);
 	create->line     = EX(opline)->lineno;
 	create->next     = NULL;
@@ -207,42 +213,41 @@ static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) { 
 	return zend_vm_call_opcode_handler(execute_data);
 } /* }}} */
 
-static zend_always_inline void php_pcov_cache(zend_op_array *result) { /* {{{ */
+zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
+	zend_op_array *result = zend_compile_file_function(fh, type);
 	zend_op_array *mapped;
 
-	if (!result->filename || !php_pcov_wants(result->filename)) {
-		return;
+	if (!result || !result->filename || !php_pcov_wants(result->filename)) {
+		return result;
 	}
 
 	if (zend_hash_exists(&PCG(files), result->filename)) {
-		return;
+		return result;
 	}
 
 	mapped = (zend_op_array*) zend_hash_add_mem(
-				&PCG(files), 
-				result->filename, 
-				result, sizeof(zend_op_array));
+			&PCG(files), 
+			result->filename, 
+			result, sizeof(zend_op_array));
 
-	if (mapped->static_variables) {
-		if (!(GC_FLAGS(mapped->static_variables) & IS_ARRAY_IMMUTABLE)) {
-			GC_ADDREF(mapped->static_variables);
+#if PHP_VERSION_ID >= 70400
+	if (result->refcount) {
+		(*result->refcount)++;
+	}
+	if (result->static_variables) {
+		if (!(GC_FLAGS(result->static_variables) & IS_ARRAY_IMMUTABLE)) {
+			GC_ADDREF(result->static_variables);
 		}
 	}
-
-	mapped->refcount = NULL;
-#if PHP_VERSION_ID >= 70400
-	ZEND_MAP_PTR_INIT(mapped->run_time_cache, NULL);
 #else
-	mapped->run_time_cache = NULL;
+	function_add_ref((zend_function*)result);
 #endif
+
+	return result;
 } /* }}} */
 
 void php_pcov_execute_ex(zend_execute_data *execute_data) { /* {{{ */
 	int zrc        = 0;
-
-	if (!EX(func)->common.function_name) {
-		php_pcov_cache((zend_op_array*) EX(func));
-	}
 
 	while (1) {
 		zrc = php_pcov_trace(execute_data);
@@ -265,9 +270,11 @@ void php_pcov_files_dtor(zval *zv) { /* {{{ */
  */
 PHP_MINIT_FUNCTION(pcov)
 {
-	REGISTER_NS_LONG_CONSTANT("pcov", "all",         PCOV_FILTER_ALL,    CONST_CS|CONST_PERSISTENT);
+	REGISTER_NS_LONG_CONSTANT("pcov", "all",         PCOV_FILTER_ALL,     CONST_CS|CONST_PERSISTENT);
 	REGISTER_NS_LONG_CONSTANT("pcov", "inclusive",   PCOV_FILTER_INCLUDE, CONST_CS|CONST_PERSISTENT);
 	REGISTER_NS_LONG_CONSTANT("pcov", "exclusive",   PCOV_FILTER_EXCLUDE, CONST_CS|CONST_PERSISTENT);
+
+	REGISTER_NS_STRING_CONSTANT("pcov", "version",     PHP_PCOV_VERSION,    CONST_CS|CONST_PERSISTENT);
 
 	REGISTER_INI_ENTRIES();
 
@@ -276,8 +283,8 @@ PHP_MINIT_FUNCTION(pcov)
 		zend_execute_ex            = php_pcov_execute_ex;
 	}
 
-	ZVAL_LONG(&php_pcov_uncovered, PHP_PCOV_UNCOVERED);
-	ZVAL_LONG(&php_pcov_covered,   PHP_PCOV_COVERED);
+	ZVAL_LONG(&php_pcov_uncovered,   PHP_PCOV_UNCOVERED);
+	ZVAL_LONG(&php_pcov_covered,     PHP_PCOV_COVERED);
 
 	return SUCCESS;
 }
@@ -307,7 +314,7 @@ const char *php_pcov_directory_defaults[] = { /* {{{ */
 
 static  void php_pcov_setup_directory(char *directory) { /* {{{ */
 	char        realpath[MAXPATHLEN];
-	struct stat statbuf;
+	zend_stat_t statbuf;
 
 	if (!directory || !*directory) {
 		const char** try = php_pcov_directory_defaults;
@@ -364,12 +371,22 @@ PHP_RINIT_FUNCTION(pcov)
 	PCG(mem) = zend_arena_create(INI_INT("pcov.initial.memory"));
 
 	zend_hash_init(&PCG(files),      INI_INT("pcov.initial.files"), NULL, php_pcov_files_dtor, 0);
+	zend_hash_init(&PCG(waiting),    INI_INT("pcov.initial.files"), NULL, NULL, 0);
 	zend_hash_init(&PCG(ignores),    INI_INT("pcov.initial.files"), NULL, NULL, 0);
 	zend_hash_init(&PCG(wants),      INI_INT("pcov.initial.files"), NULL, NULL, 0);
 	zend_hash_init(&PCG(discovered), INI_INT("pcov.initial.files"), NULL, ZVAL_PTR_DTOR, 0);
 
 	php_pcov_setup_directory(INI_STR("pcov.directory"));
 	php_pcov_setup_exclude(INI_STR("pcov.exclude"));
+
+#ifdef ZEND_COMPILE_NO_JUMPTABLES
+	CG(compiler_options) |= ZEND_COMPILE_NO_JUMPTABLES;
+#endif
+
+	if  (!zend_compile_file_function) {
+		zend_compile_file_function = zend_compile_file;
+		zend_compile_file          = php_pcov_compile_file;
+	}
 
 	return SUCCESS;
 }
@@ -394,6 +411,7 @@ PHP_RSHUTDOWN_FUNCTION(pcov)
 	zend_hash_destroy(&PCG(ignores));
 	zend_hash_destroy(&PCG(wants));
 	zend_hash_destroy(&PCG(discovered));
+	zend_hash_destroy(&PCG(waiting));
 
 	zend_arena_destroy(PCG(mem));
 
@@ -403,6 +421,11 @@ PHP_RSHUTDOWN_FUNCTION(pcov)
 
 	if (PCG(exclude)) {
 		php_pcre_pce_decref(PCG(exclude));
+	}
+
+	if (zend_compile_file == php_pcov_compile_file) {
+		zend_compile_file = zend_compile_file_function;
+		zend_compile_file_function = NULL;
 	}
 
 	return SUCCESS;
@@ -422,6 +445,9 @@ PHP_MINFO_FUNCTION(pcov)
 	php_info_print_table_header(2,
 		"PCOV support",
 		INI_BOOL("pcov.enabled")  ? "Enabled" : "Disabled");
+	php_info_print_table_row(2,
+		"PCOV version",
+		PHP_PCOV_VERSION);
 	php_info_print_table_row(2,
 		"pcov.directory",
 		directory && *directory ? directory : "auto");
@@ -463,42 +489,59 @@ static zend_always_inline void php_pcov_report(php_coverage_t *coverage, zval *f
 } /* }}} */
 
 static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *return_value) { /* {{{ */
-	zend_op       *opline = ops->opcodes, 
-		      *end    = ops->opcodes + ops->last;
+	zend_cfg cfg;
+	zend_basic_block *block;
+	zend_op *limit = ops->opcodes + ops->last;
+	int i = 0;
 
-	if (ops->last >= 1 && 
-		(((end - 1)->opcode == ZEND_RETURN || 
-		  (end - 1)->opcode == ZEND_RETURN_BY_REF || 
-		  (end - 1)->opcode == ZEND_GENERATOR_RETURN) && 
-	        ((ops->last > 1 && 
-		 ((end - 2)->opcode == ZEND_RETURN || 
-		  (end - 2)->opcode == ZEND_RETURN_BY_REF || 
-		  (end - 2)->opcode == ZEND_GENERATOR_RETURN || 
-		  (end - 2)->opcode == ZEND_THROW ||
-		  (end - 2)->opcode == ZEND_VERIFY_RETURN_TYPE))
-	  || ops->function_name == NULL || (end - 1)->extended_value == -1))) {
-		end -= (end - 2)->opcode == ZEND_VERIFY_RETURN_TYPE ?
-				2 : 1;
+	if (ops->fn_flags & ZEND_ACC_ABSTRACT) {
+		return;
 	}
 
-	while (opline < end) {
-		if (php_pcov_ignored_opcode(opline, opline->opcode)) {
-			opline++;
+	memset(&cfg, 0, sizeof(zend_cfg));
+
+	zend_build_cfg(&PCG(mem), ops,  ZEND_RT_CONSTANTS, &cfg);
+
+	for (block = cfg.blocks, i = 0; i < cfg.blocks_count; i++, block++) {
+		zend_op *opline = ops->opcodes + block->start, 
+			*end = opline + block->len;
+
+		if (!(block->flags & ZEND_BB_REACHABLE)) {
+			/*
+			* Note that, we don't care about unreachable blocks
+			* that would be removed by opcache, because it would
+			* create different reports depending on configuration
+			*/
 			continue;
 		}
 
-		if (!zend_hash_index_exists(Z_ARRVAL_P(return_value), opline->lineno)) {
-			zend_hash_index_add(
-				Z_ARRVAL_P(return_value), 
-				opline->lineno, &php_pcov_uncovered);
-		}
+		while(opline < end) {
+			if (php_pcov_ignored_opcode(opline, opline->opcode)) {
+				opline++;
+				continue;
+			}
 
-		if ((opline +0)->opcode == ZEND_NEW && 
-		    (opline +1)->opcode == ZEND_DO_FCALL) {
+			if (!zend_hash_index_exists(Z_ARRVAL_P(return_value), opline->lineno)) {
+				zend_hash_index_add(
+					Z_ARRVAL_P(return_value), 
+					opline->lineno, &php_pcov_uncovered);
+			}
+
+			if ((opline +0)->opcode == ZEND_NEW && 
+			    (opline +1)->opcode == ZEND_DO_FCALL) {
+				opline++;
+			}
+
 			opline++;
 		}
 
-		opline++;
+		if (block == cfg.blocks && opline == limit) {
+			/*
+			* If the first basic block finishes at the end of the op array
+			* then we don't care about subsequent blocks
+			*/
+			break;
+		}
 	}
 } /* }}} */
 
@@ -671,21 +714,22 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 	}
 
 	if (files) {
-		PCG(includes) = NULL;
-
 		zend_hash_clean(&PCG(files));
 		zend_hash_clean(&PCG(discovered));
 	}
 
 	zend_arena_destroy(PCG(mem));
+	zend_hash_clean(&PCG(waiting));
 
 	PCG(mem) = zend_arena_create(INI_INT("pcov.initial.memory"));
 	PCG(start) = NULL;
 } /* }}} */
 
-/* {{{ array \pcov\includes(void) */
-PHP_NAMED_FUNCTION(php_pcov_includes) 
+/* {{{ array \pcov\waiting(void) */
+PHP_NAMED_FUNCTION(php_pcov_waiting) 
 {
+	zend_string *waiting;
+
 	if (zend_parse_parameters_none() != SUCCESS) {
 		return;	
 	}
@@ -694,24 +738,11 @@ PHP_NAMED_FUNCTION(php_pcov_includes)
 
 	array_init(return_value);
 
-	if (!PCG(includes)) {
-		PCG(includes) = EG(included_files).arData;
-	}
-
-	{
-		Bucket *bucket = PCG(includes);
-		Bucket *end = EG(included_files).arData + 
-			      EG(included_files).nNumUsed;
-
-		while (bucket < end) {
-			add_next_index_str(
-				return_value, 
-				zend_string_copy(bucket->key));
-			bucket++;
-		}
-
-		PCG(includes) = end;
-	}
+	ZEND_HASH_FOREACH_STR_KEY(&PCG(waiting), waiting) {
+		add_next_index_str(
+			return_value, 
+			zend_string_copy(waiting));
+	} ZEND_HASH_FOREACH_END();
 } /* }}} */
 
 /* {{{ int \pcov\memory(void) */
@@ -754,7 +785,7 @@ const zend_function_entry php_pcov_functions[] = {
 	ZEND_NS_FENTRY("pcov", stop,       php_pcov_stop,          php_pcov_no_arginfo, 0)
 	ZEND_NS_FENTRY("pcov", collect,    php_pcov_collect,       php_pcov_collect_arginfo, 0)
 	ZEND_NS_FENTRY("pcov", clear,      php_pcov_clear,         php_pcov_clear_arginfo, 0)
-	ZEND_NS_FENTRY("pcov", includes,   php_pcov_includes,      php_pcov_no_arginfo, 0)
+	ZEND_NS_FENTRY("pcov", waiting,    php_pcov_waiting,       php_pcov_no_arginfo, 0)
 	ZEND_NS_FENTRY("pcov", memory,     php_pcov_memory,        php_pcov_no_arginfo, 0)
 	PHP_FE_END
 };

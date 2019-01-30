@@ -23,7 +23,7 @@
 extern zend_module_entry pcov_module_entry;
 #define phpext_pcov_ptr &pcov_module_entry
 
-#define PHP_PCOV_VERSION "0.9.0"
+#define PHP_PCOV_VERSION "1.0.0"
 
 #ifdef PHP_WIN32
 #	define PHP_PCOV_API __declspec(dllexport)
@@ -51,13 +51,13 @@ ZEND_BEGIN_MODULE_GLOBALS(pcov)
 	php_coverage_t   *start;
 	php_coverage_t  **next;
 	php_coverage_t  **last;
+	HashTable         waiting;
 	HashTable         files;
 	HashTable         ignores;
 	HashTable         wants;
 	HashTable         discovered;
 	zend_string      *directory;
 	pcre_cache_entry *exclude;
-	Bucket           *includes;
 	struct {
 		zend_bool enabled;
 		zend_long memory;
