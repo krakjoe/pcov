@@ -16,14 +16,14 @@
   <email>remi@php.net</email>
   <active>yes</active>
  </lead>
- <date>2019-01-22</date>
+ <date>2019-01-30</date>
  <version>
-  <release>0.9.0</release>
-  <api>0.9.0</api>
+  <release>1.0.0</release>
+  <api>1.0.0</api>
  </version>
  <stability>
-  <release>beta</release>
-  <api>beta</api>
+  <release>stable</release>
+  <api>stable</api>
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
  <notes>
@@ -43,12 +43,29 @@
     <file name="003.phpt" role="test"/>
     <file name="004.phpt" role="test"/>
    </dir> <!-- tests -->
+   <dir name="cfg">
+    <dir name="701">
+     <file name="zend_cfg.h" role="src"/>
+     <file name="zend_cfg.c" role="src"/>
+     <file name="zend_worklist.h" role="src"/>
+    </dir> <!-- 701 -->
+    <dir name="702">
+     <file name="zend_cfg.h" role="src"/>
+     <file name="zend_cfg.c" role="src"/>
+     <file name="zend_worklist.h" role="src"/>
+    </dir> <!-- 702 -->
+    <dir name="703">
+     <file name="zend_cfg.h" role="src"/>
+     <file name="zend_cfg.c" role="src"/>
+     <file name="zend_worklist.h" role="src"/>
+    </dir> <!-- 703 -->
+   </dir> <!-- cfg -->
   </dir>
  </contents>
  <dependencies>
   <required>
    <php>
-    <min>7.0.0</min>
+    <min>7.1.0</min>
    </php>
    <pearinstaller>
     <min>1.10</min>
@@ -57,4 +74,21 @@
  </dependencies>
  <providesextension>pcov</providesextension>
  <extsrcrelease/>
+  <changelog>
+   <release>
+    <date>2019-01-22</date>
+    <version>
+     <release>0.9.0</release>
+     <api>0.9.0</api>
+    </version>
+    <stability>
+     <release>beta</release>
+     <api>beta</api>
+    </stability>
+    <license uri="http://www.php.net/license">PHP License</license>
+    <notes>
+- initial pecl release
+    </notes>
+   </release>
+  </changelog>
 </package>
