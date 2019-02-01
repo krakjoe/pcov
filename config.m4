@@ -7,15 +7,17 @@ PHP_ARG_ENABLE(pcov, whether to enable php coverage support,
 if test "$PHP_PCOV" != "no"; then
   PHP_VERSION=$($PHP_CONFIG --vernum)
 
+  AC_MSG_CHECKING(PHP version)
   if test $PHP_VERSION -lt 70100; then
     AC_MSG_ERROR([pcov supports PHP 7.1+])
-  fi
-
-  if test $PHP_VERSION -gt 70099 && test $PHP_VERSION -lt 70200; then
+  elif test $PHP_VERSION -lt 70200; then
+    AC_MSG_RESULT(7.1)
 	PHP_PCOV_CFG_VERSION=701
-  elif test $PHP_VERSION -gt 70199 && test $PHP_VERSION -lt 70300; then
+  elif test $PHP_VERSION -lt 70300; then
+    AC_MSG_RESULT(7.2)
 	PHP_PCOV_CFG_VERSION=702
   else
+    AC_MSG_RESULT(7.3+)
 	PHP_PCOV_CFG_VERSION=703
   fi
 
