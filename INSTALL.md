@@ -11,7 +11,7 @@ Installation
     git clone https://github.com/krakjoe/pcov.git
     cd pcov
     phpize
-    ./configure
+    ./configure --enable-pcov
     make
     make test
     make install
