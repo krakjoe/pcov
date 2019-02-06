@@ -6,34 +6,10 @@ PCOV
 
 A self contained [CodeCoverage](https://github.com/sebastianbergmann/php-code-coverage) compatible driver for PHP7
 
-Requirements
-============
+Requirements and Installation
+=============================
 
-  * PHP 7.1+
-
-Installation
-============
-
-**From sources**
-
-    git clone https://github.com/krakjoe/pcov.git
-    cd pcov
-    phpize
-    ./configure
-    make
-    make test
-    make install
-
-Use `develop` branch for developement, use `release` branch for last stable released version.
-
-**From PECL**
-
-    pecl install pcov
-
-**Binary distributions**
-
-  * Microsoft Windows: use zip archive from [https://windows.php.net/downloads/pecl/releases/pcov/](https://windows.php.net/downloads/pecl/releases/pcov/)
-
+See [INSTALL.md](INSTALL.md)
 
 
 API
