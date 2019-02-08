@@ -186,9 +186,7 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *oplin
 static zend_always_inline php_coverage_t* php_pcov_create(zend_execute_data *execute_data) { /* {{{ */
 	php_coverage_t *create = (php_coverage_t*) zend_arena_alloc(&PCG(mem), sizeof(php_coverage_t));
 
-	if (!zend_hash_exists(&PCG(waiting), EX(func)->op_array.filename)) {
-		zend_hash_add_empty_element(&PCG(waiting), EX(func)->op_array.filename);
-	}
+	zend_hash_add_empty_element(&PCG(waiting), EX(func)->op_array.filename);
 
 	create->file     = zend_string_copy(EX(func)->op_array.filename);
 	create->line     = EX(opline)->lineno;
