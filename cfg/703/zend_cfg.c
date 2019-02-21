@@ -2,7 +2,7 @@
    +----------------------------------------------------------------------+
    | Zend Engine, CFG - Control Flow Graph                                |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1998-2018 The PHP Group                                |
+   | Copyright (c) 1998-2019 The PHP Group                                |
    +----------------------------------------------------------------------+
    | This source file is subject to version 3.01 of the PHP license,      |
    | that is bundled with this package in the file LICENSE, and is        |
@@ -459,7 +459,7 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 			case ZEND_FETCH_UNSET:
 #if PHP_VERSION_ID >= 70400
 			case ZEND_UNSET_VAR:
-			case ZEND_ISSET_ISEMPTY_VAR: 
+			case ZEND_ISSET_ISEMPTY_VAR:
 #endif
 				if (opline->extended_value & ZEND_FETCH_LOCAL) {
 					flags |= ZEND_FUNC_INDIRECT_VAR_ACCESS;
