@@ -26,4 +26,7 @@ Use `develop` branch for developement, use `release` branch for last stable rele
 
   * Microsoft Windows: use zip archive from [https://windows.php.net/downloads/pecl/releases/pcov/](https://windows.php.net/downloads/pecl/releases/pcov/)
 
+  * **Fedora** 29 and up: use the **php-pecl-pcov** package
+
+    dnf install php-pecl-pcov
 
