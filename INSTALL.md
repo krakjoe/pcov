@@ -16,7 +16,7 @@ Installation
     make test
     make install
 
-Use `develop` branch for developement, use `release` branch for last stable released version.
+Use `develop` branch for development, use `release` branch for last stable released version.
 
 **From PECL**
 
