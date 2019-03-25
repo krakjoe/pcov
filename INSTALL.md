@@ -16,14 +16,17 @@ Installation
     make test
     make install
 
-Use `develop` branch for developement, use `release` branch for last stable released version.
+Use `develop` branch for development, use `release` branch for last stable released version.
 
 **From PECL**
 
-    pecl install pcov
+    `pecl install pcov`
 
 **Binary distributions**
 
-  * Microsoft Windows: use zip archive from [https://windows.php.net/downloads/pecl/releases/pcov/](https://windows.php.net/downloads/pecl/releases/pcov/)
+  * **Microsoft Windows**: use zip archive from [https://windows.php.net/downloads/pecl/releases/pcov/](https://windows.php.net/downloads/pecl/releases/pcov/)
 
+  * **Fedora** 29 and up: use the [php-pecl-pcov](https://apps.fedoraproject.org/packages/php-pecl-pcov) package
+
+    `dnf install php-pecl-pcov`
 
