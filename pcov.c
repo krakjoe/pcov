@@ -126,7 +126,11 @@ static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) { /* {
 
 			php_pcre_match_impl(
 				PCG(exclude),
+#if PHP_VERSION_ID >= 70400
+				filename,
+#else
 				ZSTR_VAL(filename), ZSTR_LEN(filename),
+#endif
 				&match, NULL,
 				0, 0, 0, 0);
 
@@ -490,12 +494,15 @@ static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *
 	zend_basic_block *block;
 	zend_op *limit = ops->opcodes + ops->last;
 	int i = 0;
-
+	void *check = NULL;
+    
 	if (ops->fn_flags & ZEND_ACC_ABSTRACT) {
 		return;
 	}
 
 	memset(&cfg, 0, sizeof(zend_cfg));
+
+	check = zend_arena_checkpoint(PCG(mem));
 
 	zend_build_cfg(&PCG(mem), ops,  ZEND_RT_CONSTANTS, &cfg);
 
@@ -540,6 +547,8 @@ static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *
 			break;
 		}
 	}
+	
+	zend_arena_release(&PCG(mem), check);
 } /* }}} */
 
 static zend_always_inline void php_pcov_discover_file(zend_string *file, zval *return_value) { /* {{{ */
