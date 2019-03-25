@@ -9,6 +9,7 @@ php:
   - 7.1
   - 7.2
   - 7.3
+  - 7.4snapshot
   - nightly
 
 env:
@@ -32,6 +33,14 @@ matrix:
     - php: nightly
       env: OPCACHE=0 TEST_PHP_ARGS="$DEF $MEMCHECK"
     - php: nightly
+      env: OPCACHE=1 TEST_PHP_ARGS="$DEF $MEMCHECK"
+    - php: 7.4snapshot
+      env: OPCACHE=0 TEST_PHP_ARGS="$DEF"
+    - php: 7.4snapshot
+      env: OPCACHE=1 TEST_PHP_ARGS="$DEF"
+    - php: 7.4snapshot
+      env: OPCACHE=0 TEST_PHP_ARGS="$DEF $MEMCHECK"
+    - php: 7.4snapshot
       env: OPCACHE=1 TEST_PHP_ARGS="$DEF $MEMCHECK"
 
 before_script:

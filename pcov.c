@@ -126,7 +126,11 @@ static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) { /* {
 
 			php_pcre_match_impl(
 				PCG(exclude),
+#if PHP_VERSION_ID >= 70400
+				filename,
+#else
 				ZSTR_VAL(filename), ZSTR_LEN(filename),
+#endif
 				&match, NULL,
 				0, 0, 0, 0);
 
@@ -186,9 +190,7 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *oplin
 static zend_always_inline php_coverage_t* php_pcov_create(zend_execute_data *execute_data) { /* {{{ */
 	php_coverage_t *create = (php_coverage_t*) zend_arena_alloc(&PCG(mem), sizeof(php_coverage_t));
 
-	if (!zend_hash_exists(&PCG(waiting), EX(func)->op_array.filename)) {
-		zend_hash_add_empty_element(&PCG(waiting), EX(func)->op_array.filename);
-	}
+	zend_hash_add_empty_element(&PCG(waiting), EX(func)->op_array.filename);
 
 	create->file     = zend_string_copy(EX(func)->op_array.filename);
 	create->line     = EX(opline)->lineno;
@@ -215,7 +217,6 @@ static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) { 
 
 zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
 	zend_op_array *result = zend_compile_file_function(fh, type);
-	zend_op_array *mapped;
 
 	if (!result || !result->filename || !php_pcov_wants(result->filename)) {
 		return result;
@@ -225,7 +226,7 @@ zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
 		return result;
 	}
 
-	mapped = (zend_op_array*) zend_hash_add_mem(
+	zend_hash_add_mem(
 			&PCG(files), 
 			result->filename, 
 			result, sizeof(zend_op_array));
@@ -488,19 +489,19 @@ static zend_always_inline void php_pcov_report(php_coverage_t *coverage, zval *f
 	} while ((coverage = coverage->next));
 } /* }}} */
 
-static zend_always_inline void php_pcov_discover_code(zend_op_array *ops, zval *return_value) { /* {{{ */
+static zend_always_inline void php_pcov_discover_code(zend_arena **arena, zend_op_array *ops, zval *return_value) { /* {{{ */
 	zend_cfg cfg;
 	zend_basic_block *block;
 	zend_op *limit = ops->opcodes + ops->last;
 	int i = 0;
-
+    
 	if (ops->fn_flags & ZEND_ACC_ABSTRACT) {
 		return;
 	}
 
 	memset(&cfg, 0, sizeof(zend_cfg));
 
-	zend_build_cfg(&PCG(mem), ops,  ZEND_RT_CONSTANTS, &cfg);
+	zend_build_cfg(arena, ops,  ZEND_RT_CONSTANTS, &cfg);
 
 	for (block = cfg.blocks, i = 0; i < cfg.blocks_count; i++, block++) {
 		zend_op *opline = ops->opcodes + block->start, 
@@ -549,7 +550,8 @@ static zend_always_inline void php_pcov_discover_file(zend_string *file, zval *r
 	zval discovered;
 	zend_op_array *ops;
 	zval *cache = zend_hash_find(&PCG(discovered), file);
-
+	zend_arena *mem;
+    
 	if (cache) {
 		zend_hash_update(
 			Z_ARRVAL_P(return_value), file, cache);
@@ -563,7 +565,9 @@ static zend_always_inline void php_pcov_discover_file(zend_string *file, zval *r
 
 	array_init(&discovered);
 
-	php_pcov_discover_code(ops, &discovered);
+	mem = zend_arena_create(1024 * 1024);
+
+	php_pcov_discover_code(&mem, ops, &discovered);
 	{
 		zend_class_entry *ce;
 		zend_op_array    *function;
@@ -576,7 +580,7 @@ static zend_always_inline void php_pcov_discover_file(zend_string *file, zval *r
 				if (function->type == ZEND_USER_FUNCTION &&
 				    function->filename &&
 				    zend_string_equals(file, function->filename)) {
-					php_pcov_discover_code(function, &discovered);
+					php_pcov_discover_code(&mem, function, &discovered);
 				}
 			} ZEND_HASH_FOREACH_END();
 		} ZEND_HASH_FOREACH_END();
@@ -588,7 +592,7 @@ static zend_always_inline void php_pcov_discover_file(zend_string *file, zval *r
 			if (function->type == ZEND_USER_FUNCTION &&
 			    function->filename &&
 			    zend_string_equals(file, function->filename)) {
-				php_pcov_discover_code(function, &discovered);
+				php_pcov_discover_code(&mem, function, &discovered);
 			}
 		} ZEND_HASH_FOREACH_END();
 	}
@@ -596,6 +600,8 @@ static zend_always_inline void php_pcov_discover_file(zend_string *file, zval *r
 	zend_hash_update(Z_ARRVAL_P(return_value), file, &discovered);
 	zend_hash_update(&PCG(discovered), file, &discovered);
 	Z_ADDREF(discovered);
+	
+	zend_arena_destroy(mem);
 } /* }}} */
 
 /* {{{ array \pcov\collect(int $type = \pcov\all, array $filter = []); */

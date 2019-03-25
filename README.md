@@ -6,10 +6,11 @@ PCOV
 
 A self contained [CodeCoverage](https://github.com/sebastianbergmann/php-code-coverage) compatible driver for PHP7
 
-Requirements
-============
+Requirements and Installation
+=============================
 
-  * PHP 7.1+
+See [INSTALL.md](INSTALL.md)
+
 
 API
 ===
