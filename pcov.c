@@ -389,6 +389,10 @@ PHP_RINIT_FUNCTION(pcov)
 		zend_compile_file          = php_pcov_compile_file;
 	}
 
+	PCG(start) = NULL;
+	PCG(last)  = NULL;
+	PCG(next)  = NULL;
+
 	return SUCCESS;
 }
 /* }}} */
