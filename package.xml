@@ -16,9 +16,9 @@
   <email>remi@php.net</email>
   <active>yes</active>
  </lead>
- <date>2019-03-25</date>
+ <date>2019-03-31</date>
  <version>
-  <release>1.0.1</release>
+  <release>1.0.2</release>
   <api>1.0.0</api>
  </version>
  <stability>
@@ -27,8 +27,7 @@
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
  <notes>
-- Release memory from building CFG as early as possible
-- Compat with 7.4/8.0 changes
+- Fix #10 second non-cli SAPI request behaves strangely
  </notes>
  <contents>
   <dir name="/">
@@ -76,6 +75,22 @@
  <providesextension>pcov</providesextension>
  <extsrcrelease/>
   <changelog>
+   <release>
+    <date>2019-03-25</date>
+    <version>
+     <release>1.0.1</release>
+     <api>1.0.0</api>
+    </version>
+    <stability>
+     <release>stable</release>
+     <api>stable</api>
+    </stability>
+    <license uri="http://www.php.net/license">PHP License</license>
+    <notes>
+- Release memory from building CFG as early as possible
+- Compat with 7.4/8.0 changes
+    </notes>
+   </release>
    <release>
     <date>2019-01-30</date>
     <version>
