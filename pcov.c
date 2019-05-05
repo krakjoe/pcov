@@ -603,8 +603,6 @@ static zend_always_inline void php_pcov_discover_file(zend_string *file, zval *r
 	}
 
 	zend_hash_update(&PCG(discovered), file, &discovered);
-	Z_ADDREF(discovered);
-	
 	zend_arena_destroy(mem);
 	
 	return php_pcov_discover_file(file, return_value);
