@@ -550,7 +550,7 @@ static zend_always_inline void php_pcov_discover_code(zend_arena **arena, zend_o
 	}
 } /* }}} */
 
-static zend_always_inline void php_pcov_discover_file(zend_string *file, zval *return_value) { /* {{{ */
+static void php_pcov_discover_file(zend_string *file, zval *return_value) { /* {{{ */
 	zval discovered;
 	zend_op_array *ops;
 	zval *cache = zend_hash_find(&PCG(discovered), file);
