@@ -602,11 +602,12 @@ static zend_always_inline void php_pcov_discover_file(zend_string *file, zval *r
 		} ZEND_HASH_FOREACH_END();
 	}
 
-	zend_hash_update(Z_ARRVAL_P(return_value), file, &discovered);
 	zend_hash_update(&PCG(discovered), file, &discovered);
 	Z_ADDREF(discovered);
 	
 	zend_arena_destroy(mem);
+	
+	return php_pcov_discover_file(file, return_value);
 } /* }}} */
 
 /* {{{ array \pcov\collect(int $type = \pcov\all, array $filter = []); */
