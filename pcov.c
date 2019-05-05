@@ -557,9 +557,10 @@ static zend_always_inline void php_pcov_discover_file(zend_string *file, zval *r
 	zend_arena *mem;
     
 	if (cache) {
-		zend_hash_update(
-			Z_ARRVAL_P(return_value), file, cache);
-		Z_ADDREF_P(cache);
+		zval uncached;
+		ZVAL_DUP(&uncached, cache);
+
+		zend_hash_update(Z_ARRVAL_P(return_value), file, &uncached);
 		return;
 	}
 
