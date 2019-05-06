@@ -550,16 +550,17 @@ static zend_always_inline void php_pcov_discover_code(zend_arena **arena, zend_o
 	}
 } /* }}} */
 
-static zend_always_inline void php_pcov_discover_file(zend_string *file, zval *return_value) { /* {{{ */
+static void php_pcov_discover_file(zend_string *file, zval *return_value) { /* {{{ */
 	zval discovered;
 	zend_op_array *ops;
 	zval *cache = zend_hash_find(&PCG(discovered), file);
 	zend_arena *mem;
     
 	if (cache) {
-		zend_hash_update(
-			Z_ARRVAL_P(return_value), file, cache);
-		Z_ADDREF_P(cache);
+		zval uncached;
+		ZVAL_DUP(&uncached, cache);
+
+		zend_hash_update(Z_ARRVAL_P(return_value), file, &uncached);
 		return;
 	}
 
@@ -601,11 +602,10 @@ static zend_always_inline void php_pcov_discover_file(zend_string *file, zval *r
 		} ZEND_HASH_FOREACH_END();
 	}
 
-	zend_hash_update(Z_ARRVAL_P(return_value), file, &discovered);
 	zend_hash_update(&PCG(discovered), file, &discovered);
-	Z_ADDREF(discovered);
-	
 	zend_arena_destroy(mem);
+	
+	return php_pcov_discover_file(file, return_value);
 } /* }}} */
 
 /* {{{ array \pcov\collect(int $type = \pcov\all, array $filter = []); */
