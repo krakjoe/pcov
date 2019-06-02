@@ -723,24 +723,24 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 		return;
 	}
 
-	PHP_PCOV_API_ENABLED_GUARD();
+    PHP_PCOV_API_ENABLED_GUARD();
 
-	if (files) {
-		php_pcov_clean(&PCG(files));
-		php_pcov_clean(&PCG(discovered));
-	}
+    if (files) {
+        php_pcov_clean(&PCG(files));
+        php_pcov_clean(&PCG(discovered));
+    }
 
-  zend_arena_destroy(PCG(mem));
+    zend_arena_destroy(PCG(mem));
 
-	PCG(mem) =
-		zend_arena_create(
-			INI_INT("pcov.initial.memory"));
+    PCG(mem) =
+        zend_arena_create(
+            INI_INT("pcov.initial.memory"));
 
-	PCG(start) = NULL;
-  PCG(last) = NULL;
-  PCG(next) = NULL;
+    PCG(start) = NULL;
+    PCG(last) = NULL;
+    PCG(next) = NULL;
 
-  php_pcov_clean(&PCG(waiting));
+    php_pcov_clean(&PCG(waiting));
 } /* }}} */
 
 /* {{{ array \pcov\waiting(void) */
