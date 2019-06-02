@@ -153,7 +153,7 @@ static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) { /* {
 	return 0;
 } /* }}} */
 
-static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *opline, zend_uchar opcode) { /* {{{ */
+static zend_always_inline zend_bool php_pcov_ignored_opcode(zend_uchar opcode) { /* {{{ */
 	return
 	    opcode == ZEND_NOP ||
 	    opcode == ZEND_OP_DATA ||
@@ -212,16 +212,18 @@ static zend_always_inline php_coverage_t* php_pcov_create(zend_execute_data *exe
 } /* }}} */
 
 static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) { /* {{{ */
-	if (PCG(enabled) && php_pcov_wants(EX(func)->op_array.filename)) {
-		php_coverage_t *coverage = php_pcov_create(execute_data);
+	if (PCG(enabled)) {
+		if (php_pcov_wants(EX(func)->op_array.filename) && !php_pcov_ignored_opcode(EX(opline)->opcode)) {
+			php_coverage_t *coverage = php_pcov_create(execute_data);
 
-		if (!PCG(start)) {
-			PCG(start) = coverage;
-		} else {
-			*(PCG(next)) = coverage;
+			if (!PCG(start)) {
+				PCG(start) = coverage;
+			} else {
+				*(PCG(next)) = coverage;
+			}
+
+			PCG(next) = &coverage->next;
 		}
-
-		PCG(next) = &coverage->next;
 	}
 
 	return zend_vm_call_opcode_handler(execute_data);
@@ -530,7 +532,7 @@ static zend_always_inline void php_pcov_discover_code(zend_arena **arena, zend_o
 		}
 
 		while(opline < end) {
-			if (php_pcov_ignored_opcode(opline, opline->opcode)) {
+			if (php_pcov_ignored_opcode(opline->opcode)) {
 				opline++;
 				continue;
 			}
@@ -743,8 +745,13 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 	if (what & PCOV_CLEAR_COVERAGE) {
 		zend_arena_destroy(PCG(mem));
 
-		PCG(mem) = zend_arena_create(INI_INT("pcov.initial.memory"));
+		PCG(mem) =
+			zend_arena_create(
+				INI_INT("pcov.initial.memory"));
+
 		PCG(start) = NULL;
+    PCG(last) = NULL;
+    PCG(next) = NULL;
   }
 } /* }}} */
 
