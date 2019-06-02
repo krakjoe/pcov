@@ -37,11 +37,11 @@ function \pcov\stop(void) : void;
 function \pcov\collect(int $type = \pcov\all, array $filter = []) : array;
 
 /*
-* Shall clear stored coverage information
-* @param set true to clear file cache
+* Shall clear stored information
+* @param integer mask of \pcov\coverage, \pcov\waiting, and \pcov\files
 * Note: clearing the file tables may have surprising consequences
 */
-function \pcov\clear(bool $files = false) : void;
+function \pcov\clear(int $what = \pcov\coverage) : void;
 
 /*
 * Shall return list of files waiting to be collected
