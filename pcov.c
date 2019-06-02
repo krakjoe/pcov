@@ -39,10 +39,6 @@
 #define PCOV_FILTER_INCLUDE 1
 #define PCOV_FILTER_EXCLUDE 2
 
-#define PCOV_CLEAR_COVERAGE 0x00000001
-#define PCOV_CLEAR_WAITING  0x00000010
-#define PCOV_CLEAR_FILES    0x00000100
-
 #define PHP_PCOV_UNCOVERED   -1
 #define PHP_PCOV_COVERED      1
 
@@ -288,10 +284,6 @@ PHP_MINIT_FUNCTION(pcov)
 	REGISTER_NS_LONG_CONSTANT("pcov", "all",         PCOV_FILTER_ALL,     CONST_CS|CONST_PERSISTENT);
 	REGISTER_NS_LONG_CONSTANT("pcov", "inclusive",   PCOV_FILTER_INCLUDE, CONST_CS|CONST_PERSISTENT);
 	REGISTER_NS_LONG_CONSTANT("pcov", "exclusive",   PCOV_FILTER_EXCLUDE, CONST_CS|CONST_PERSISTENT);
-
-  REGISTER_NS_LONG_CONSTANT("pcov", "coverage",    PCOV_CLEAR_COVERAGE, CONST_CS|CONST_PERSISTENT);
-  REGISTER_NS_LONG_CONSTANT("pcov", "waiting",     PCOV_CLEAR_WAITING,  CONST_CS|CONST_PERSISTENT);
-  REGISTER_NS_LONG_CONSTANT("pcov", "files",       PCOV_CLEAR_FILES,    CONST_CS|CONST_PERSISTENT);
 
 	REGISTER_NS_STRING_CONSTANT("pcov", "version",     PHP_PCOV_VERSION,    CONST_CS|CONST_PERSISTENT);
 
@@ -722,37 +714,33 @@ PHP_NAMED_FUNCTION(php_pcov_stop)
 	PCG(enabled) = 0;
 } /* }}} */
 
-/* {{{ void \pcov\clear(int $what = \pcov\coverage) */
+/* {{{ void \pcov\clear(bool $files = 0) */
 PHP_NAMED_FUNCTION(php_pcov_clear)
 {
-	zend_long what = PCOV_CLEAR_COVERAGE;
+	zend_bool files = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &what) != SUCCESS) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|b", &files) != SUCCESS) {
 		return;
 	}
 
 	PHP_PCOV_API_ENABLED_GUARD();
 
-	if (what & PCOV_CLEAR_FILES) {
+	if (files) {
 		php_pcov_clean(&PCG(files));
 		php_pcov_clean(&PCG(discovered));
 	}
 
-	if (what & PCOV_CLEAR_WAITING) {
-		php_pcov_clean(&PCG(waiting));
-	}
+  zend_arena_destroy(PCG(mem));
 
-	if (what & PCOV_CLEAR_COVERAGE) {
-		zend_arena_destroy(PCG(mem));
+	PCG(mem) =
+		zend_arena_create(
+			INI_INT("pcov.initial.memory"));
 
-		PCG(mem) =
-			zend_arena_create(
-				INI_INT("pcov.initial.memory"));
+	PCG(start) = NULL;
+  PCG(last) = NULL;
+  PCG(next) = NULL;
 
-		PCG(start) = NULL;
-    PCG(last) = NULL;
-    PCG(next) = NULL;
-  }
+  php_pcov_clean(&PCG(waiting));
 } /* }}} */
 
 /* {{{ array \pcov\waiting(void) */
@@ -801,7 +789,7 @@ ZEND_END_ARG_INFO() /* }}} */
 
 /* {{{ */
 ZEND_BEGIN_ARG_INFO_EX(php_pcov_clear_arginfo, 0, 0, 0)
-	ZEND_ARG_TYPE_INFO(0, what, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, files, _IS_BOOL, 0)
 ZEND_END_ARG_INFO() /* }}} */
 
 /* {{{ */
