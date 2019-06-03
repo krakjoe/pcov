@@ -67,24 +67,24 @@ ZEND_DECLARE_MODULE_GLOBALS(pcov)
 
 PHP_INI_BEGIN()
 	STD_PHP_INI_BOOLEAN(
-		"pcov.enabled", "1", 
-		PHP_INI_SYSTEM, OnUpdateBool, 
+		"pcov.enabled", "1",
+		PHP_INI_SYSTEM, OnUpdateBool,
 		ini.enabled, zend_pcov_globals, pcov_globals)
 	STD_PHP_INI_ENTRY  (
-		"pcov.directory", "", 
-		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateString, 
+		"pcov.directory", "",
+		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateString,
 		ini.directory, zend_pcov_globals, pcov_globals)
 	STD_PHP_INI_ENTRY  (
-		"pcov.exclude", "", 
-		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateString, 
+		"pcov.exclude", "",
+		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateString,
 		ini.exclude, zend_pcov_globals, pcov_globals)
 	STD_PHP_INI_ENTRY(
-		"pcov.initial.memory", "65336", 
-		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateLong, 
+		"pcov.initial.memory", "65336",
+		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateLong,
 		ini.memory, zend_pcov_globals, pcov_globals)
 	STD_PHP_INI_ENTRY(
-		"pcov.initial.files", "64", 
-		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateLong, 
+		"pcov.initial.files", "64",
+		PHP_INI_SYSTEM | PHP_INI_PERDIR, OnUpdateLong,
 		ini.files, zend_pcov_globals, pcov_globals)
 PHP_INI_END()
 
@@ -115,8 +115,8 @@ static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) { /* {
 	}
 
 	if (strncmp(
-		ZSTR_VAL(filename), 
-		ZSTR_VAL(PCG(directory)), 
+		ZSTR_VAL(filename),
+		ZSTR_VAL(PCG(directory)),
 		ZSTR_LEN(PCG(directory))) == SUCCESS) {
 
 		if (PCG(exclude)) {
@@ -149,14 +149,14 @@ static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) { /* {
 	return 0;
 } /* }}} */
 
-static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *opline, zend_uchar opcode) { /* {{{ */
+static zend_always_inline zend_bool php_pcov_ignored_opcode(zend_uchar opcode) { /* {{{ */
 	return
-	    opcode == ZEND_NOP || 
-	    opcode == ZEND_OP_DATA || 
- 	    opcode == ZEND_FE_FREE || 
-	    opcode == ZEND_FREE || 
+	    opcode == ZEND_NOP ||
+	    opcode == ZEND_OP_DATA ||
+	    opcode == ZEND_FE_FREE ||
+	    opcode == ZEND_FREE ||
 	    opcode == ZEND_ASSERT_CHECK ||
-	    opcode == ZEND_VERIFY_RETURN_TYPE ||  
+	    opcode == ZEND_VERIFY_RETURN_TYPE ||
 	    opcode == ZEND_RECV ||
 	    opcode == ZEND_RECV_INIT ||
 	    opcode == ZEND_RECV_VARIADIC ||
@@ -164,52 +164,62 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(const zend_op *oplin
 	    opcode == ZEND_SEND_VAR_EX ||
 	    opcode == ZEND_SEND_REF ||
 	    opcode == ZEND_SEND_UNPACK ||
-	    opcode == ZEND_DECLARE_CONST || 
-	    opcode == ZEND_DECLARE_CLASS || 
-	    opcode == ZEND_DECLARE_INHERITED_CLASS || 
-	    opcode == ZEND_DECLARE_FUNCTION || 
-	    opcode == ZEND_DECLARE_INHERITED_CLASS_DELAYED || 
-	    opcode == ZEND_DECLARE_ANON_CLASS || 
-	    opcode == ZEND_DECLARE_ANON_INHERITED_CLASS || 
-	    opcode == ZEND_FAST_RET || 
+	    opcode == ZEND_DECLARE_CONST ||
+	    opcode == ZEND_DECLARE_CLASS ||
+	    opcode == ZEND_DECLARE_INHERITED_CLASS ||
+	    opcode == ZEND_DECLARE_FUNCTION ||
+	    opcode == ZEND_DECLARE_INHERITED_CLASS_DELAYED ||
+	    opcode == ZEND_DECLARE_ANON_CLASS ||
+	    opcode == ZEND_DECLARE_ANON_INHERITED_CLASS ||
+	    opcode == ZEND_FAST_RET ||
 	    opcode == ZEND_FAST_CALL ||
-	    opcode == ZEND_TICKS || 
-	    opcode == ZEND_EXT_STMT || 
-	    opcode == ZEND_EXT_FCALL_BEGIN || 
-	    opcode == ZEND_EXT_FCALL_END || 
-	    opcode == ZEND_EXT_NOP || 
+	    opcode == ZEND_TICKS ||
+	    opcode == ZEND_EXT_STMT ||
+	    opcode == ZEND_EXT_FCALL_BEGIN ||
+	    opcode == ZEND_EXT_FCALL_END ||
+	    opcode == ZEND_EXT_NOP ||
 #if PHP_VERSION_ID < 70400
-	    opcode == ZEND_VERIFY_ABSTRACT_CLASS || 
-	    opcode == ZEND_ADD_TRAIT || 
-	    opcode == ZEND_BIND_TRAITS || 
+	    opcode == ZEND_VERIFY_ABSTRACT_CLASS ||
+	    opcode == ZEND_ADD_TRAIT ||
+	    opcode == ZEND_BIND_TRAITS ||
 #endif
 	    opcode == ZEND_BIND_GLOBAL
 	;
 } /* }}} */
 
+static zend_always_inline zend_string* php_pcov_interned_string(zend_string *string) { /* {{{ */
+	if (ZSTR_IS_INTERNED(string)) {
+		return string;
+	}
+
+	return zend_new_interned_string(string);
+} /* }}} */
+
 static zend_always_inline php_coverage_t* php_pcov_create(zend_execute_data *execute_data) { /* {{{ */
 	php_coverage_t *create = (php_coverage_t*) zend_arena_alloc(&PCG(mem), sizeof(php_coverage_t));
 
-	zend_hash_add_empty_element(&PCG(waiting), EX(func)->op_array.filename);
-
-	create->file     = zend_string_copy(EX(func)->op_array.filename);
+	create->file     = php_pcov_interned_string(EX(func)->op_array.filename);
 	create->line     = EX(opline)->lineno;
 	create->next     = NULL;
+
+	zend_hash_add_empty_element(&PCG(waiting), create->file);
 
 	return create;
 } /* }}} */
 
 static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) { /* {{{ */
-	if (PCG(enabled) && php_pcov_wants(EX(func)->op_array.filename)) {
-		php_coverage_t *coverage = php_pcov_create(execute_data);
+	if (PCG(enabled)) {
+		if (php_pcov_wants(EX(func)->op_array.filename) && !php_pcov_ignored_opcode(EX(opline)->opcode)) {
+			php_coverage_t *coverage = php_pcov_create(execute_data);
 
-		if (!PCG(start)) {
-			PCG(start) = coverage;
-		} else {
-			*(PCG(next)) = coverage;
+			if (!PCG(start)) {
+				PCG(start) = coverage;
+			} else {
+				*(PCG(next)) = coverage;
+			}
+
+			PCG(next) = &coverage->next;
 		}
-
-		PCG(next) = &coverage->next;
 	}
 
 	return zend_vm_call_opcode_handler(execute_data);
@@ -227,8 +237,8 @@ zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
 	}
 
 	zend_hash_add_mem(
-			&PCG(files), 
-			result->filename, 
+			&PCG(files),
+			result->filename,
 			result, sizeof(zend_op_array));
 
 #if PHP_VERSION_ID >= 70400
@@ -329,7 +339,7 @@ static  void php_pcov_setup_directory(char *directory) { /* {{{ */
 			try++;
 		}
 	} else {
-		if (VCWD_REALPATH(directory, realpath) && 
+		if (VCWD_REALPATH(directory, realpath) &&
 		    VCWD_STAT(realpath, &statbuf) == SUCCESS) {
 			directory = realpath;
 		}
@@ -403,13 +413,6 @@ PHP_RSHUTDOWN_FUNCTION(pcov)
 {
 	if (!INI_BOOL("pcov.enabled") || CG(unclean_shutdown)) {
 		return SUCCESS;
-	}
-
-	if (PCG(start)) {
-		php_coverage_t *coverage = PCG(start);
-		do {
-			zend_string_release(coverage->file);
-		} while ((coverage = coverage->next));
 	}
 
 	zend_hash_destroy(&PCG(files));
@@ -498,7 +501,7 @@ static zend_always_inline void php_pcov_discover_code(zend_arena **arena, zend_o
 	zend_basic_block *block;
 	zend_op *limit = ops->opcodes + ops->last;
 	int i = 0;
-    
+
 	if (ops->fn_flags & ZEND_ACC_ABSTRACT) {
 		return;
 	}
@@ -508,7 +511,7 @@ static zend_always_inline void php_pcov_discover_code(zend_arena **arena, zend_o
 	zend_build_cfg(arena, ops,  ZEND_RT_CONSTANTS, &cfg);
 
 	for (block = cfg.blocks, i = 0; i < cfg.blocks_count; i++, block++) {
-		zend_op *opline = ops->opcodes + block->start, 
+		zend_op *opline = ops->opcodes + block->start,
 			*end = opline + block->len;
 
 		if (!(block->flags & ZEND_BB_REACHABLE)) {
@@ -521,18 +524,18 @@ static zend_always_inline void php_pcov_discover_code(zend_arena **arena, zend_o
 		}
 
 		while(opline < end) {
-			if (php_pcov_ignored_opcode(opline, opline->opcode)) {
+			if (php_pcov_ignored_opcode(opline->opcode)) {
 				opline++;
 				continue;
 			}
 
 			if (!zend_hash_index_exists(Z_ARRVAL_P(return_value), opline->lineno)) {
 				zend_hash_index_add(
-					Z_ARRVAL_P(return_value), 
+					Z_ARRVAL_P(return_value),
 					opline->lineno, &php_pcov_uncovered);
 			}
 
-			if ((opline +0)->opcode == ZEND_NEW && 
+			if ((opline +0)->opcode == ZEND_NEW &&
 			    (opline +1)->opcode == ZEND_DO_FCALL) {
 				opline++;
 			}
@@ -555,7 +558,7 @@ static void php_pcov_discover_file(zend_string *file, zval *return_value) { /* {
 	zend_op_array *ops;
 	zval *cache = zend_hash_find(&PCG(discovered), file);
 	zend_arena *mem;
-    
+
 	if (cache) {
 		zval uncached;
 		ZVAL_DUP(&uncached, cache);
@@ -608,6 +611,12 @@ static void php_pcov_discover_file(zend_string *file, zval *return_value) { /* {
 	return php_pcov_discover_file(file, return_value);
 } /* }}} */
 
+static zend_always_inline void php_pcov_clean(HashTable *table) { /* {{{ */
+	if (table->nNumUsed) {
+		zend_hash_clean(table);
+	}
+} /* }}} */
+
 /* {{{ array \pcov\collect(int $type = \pcov\all, array $filter = []); */
 PHP_NAMED_FUNCTION(php_pcov_collect)
 {
@@ -623,7 +632,7 @@ PHP_NAMED_FUNCTION(php_pcov_collect)
 	if (PCOV_FILTER_ALL != type &&
 	    PCOV_FILTER_INCLUDE != type &&
 	    PCOV_FILTER_EXCLUDE != type) {
-		zend_throw_error(zend_ce_type_error, 
+		zend_throw_error(zend_ce_type_error,
 			"type must be "
 				"\\pcov\\inclusive, "
 				"\\pcov\\exclusive, or \\pcov\\all");
@@ -705,7 +714,7 @@ PHP_NAMED_FUNCTION(php_pcov_stop)
 	PCG(enabled) = 0;
 } /* }}} */
 
-/* {{{ void \pcov\clear(bool $files = false) */
+/* {{{ void \pcov\clear(bool $files = 0) */
 PHP_NAMED_FUNCTION(php_pcov_clear)
 {
 	zend_bool files = 0;
@@ -716,27 +725,26 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 
 	PHP_PCOV_API_ENABLED_GUARD();
 
-	if (PCG(start)) {
-		php_coverage_t *coverage = PCG(start);
-		do {
-			zend_string_release(coverage->file);
-		} while ((coverage = coverage->next));
-	}
-
 	if (files) {
-		zend_hash_clean(&PCG(files));
-		zend_hash_clean(&PCG(discovered));
+		php_pcov_clean(&PCG(files));
+		php_pcov_clean(&PCG(discovered));
 	}
 
 	zend_arena_destroy(PCG(mem));
-	zend_hash_clean(&PCG(waiting));
 
-	PCG(mem) = zend_arena_create(INI_INT("pcov.initial.memory"));
+	PCG(mem) =
+		zend_arena_create(
+			INI_INT("pcov.initial.memory"));
+
 	PCG(start) = NULL;
+	PCG(last) = NULL;
+	PCG(next) = NULL;
+
+	php_pcov_clean(&PCG(waiting));
 } /* }}} */
 
 /* {{{ array \pcov\waiting(void) */
-PHP_NAMED_FUNCTION(php_pcov_waiting) 
+PHP_NAMED_FUNCTION(php_pcov_waiting)
 {
 	zend_string *waiting;
 
@@ -750,13 +758,13 @@ PHP_NAMED_FUNCTION(php_pcov_waiting)
 
 	ZEND_HASH_FOREACH_STR_KEY(&PCG(waiting), waiting) {
 		add_next_index_str(
-			return_value, 
+			return_value,
 			zend_string_copy(waiting));
 	} ZEND_HASH_FOREACH_END();
 } /* }}} */
 
 /* {{{ int \pcov\memory(void) */
-PHP_NAMED_FUNCTION(php_pcov_memory) 
+PHP_NAMED_FUNCTION(php_pcov_memory)
 {
 	zend_arena *arena = PCG(mem);
 

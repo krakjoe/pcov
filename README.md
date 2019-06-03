@@ -37,8 +37,8 @@ function \pcov\stop(void) : void;
 function \pcov\collect(int $type = \pcov\all, array $filter = []) : array;
 
 /*
-* Shall clear stored coverage information
-* @param set true to clear file cache
+* Shall clear stored information
+* @param bool set true to clear file tables
 * Note: clearing the file tables may have surprising consequences
 */
 function \pcov\clear(bool $files = false) : void;
