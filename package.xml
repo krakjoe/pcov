@@ -16,9 +16,9 @@
   <email>remi@php.net</email>
   <active>yes</active>
  </lead>
- <date>2019-05-06</date>
+ <date>2019-06-03</date>
  <version>
-  <release>1.0.3</release>
+  <release>1.0.4</release>
   <api>1.0.0</api>
  </version>
  <stability>
@@ -27,7 +27,10 @@
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
  <notes>
-- Fix #12 issue with faulty line coverage
+- Fix #17 Lines not covered when more tests are run
+- Improve perf of clear routine
+- Merge upstream cfg updates (switch block change)
+- Omit ignored opcodes from internal coverage data completely (doesn't effect users, except less memory used)
  </notes>
  <contents>
   <dir name="/">
@@ -75,6 +78,21 @@
  <providesextension>pcov</providesextension>
  <extsrcrelease/>
   <changelog>
+   <release>
+     <date>2019-05-06</date>
+     <version>
+      <release>1.0.3</release>
+      <api>1.0.0</api>
+     </version>
+     <stability>
+      <release>stable</release>
+      <api>stable</api>
+     </stability>
+     <license uri="http://www.php.net/license">PHP License</license>
+     <notes>
+- Fix #12 issue with faulty line coverage
+     </notes>
+   </release>
    <release>
     <date>2019-03-31</date>
     <version>
