@@ -208,7 +208,7 @@ static zend_always_inline zend_string* php_pcov_interned_string(zend_string *str
 
 	GC_SET_REFCOUNT(interned, 1);
 #if PHP_VERSION_ID < 70200
-    GC_ADD_FLAGS(interned, IS_STR_PERMANENT | IS_STR_INTERNED);
+    GC_FLAGS(interned) |= IS_STR_PERMANENT | IS_STR_INTERNED;
 #else
 	GC_TYPE_INFO(interned) =
 			IS_STRING |
