@@ -880,4 +880,4 @@ ZEND_GET_MODULE(pcov)
  * End:
  * vim600: noet sw=4 ts=4 fdm=marker
  * vim<600: noet sw=4 ts=4
- *//opt/src/php-src/ext/sockets/tests/ipv4loop.phpt
+ */
