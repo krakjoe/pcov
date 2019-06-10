@@ -6,7 +6,6 @@ addons:
     packages:
       - valgrind
 php:
-  - 7.1
   - 7.2
   - 7.3
   - 7.4snapshot
@@ -67,8 +66,6 @@ script:
   - make $RULE
   - make install
   - php run-tests.php -P
-
-after_script:
   - git clone https://github.com/sebastianbergmann/php-code-coverage
   - cd php-code-coverage
   - composer install --ignore-platform-reqs
