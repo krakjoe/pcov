@@ -207,9 +207,13 @@ static zend_always_inline zend_string* php_pcov_interned_string(zend_string *str
 		_ZSTR_STRUCT_SIZE(ZSTR_LEN(string)));
 
 	GC_SET_REFCOUNT(interned, 1);
+#if PHP_VERSION_ID <= 70100
+    GC_ADD_FLAGS(interned, IS_STR_PERMANENT | IS_STR_INTERNED);
+#else
 	GC_TYPE_INFO(interned) =
 			IS_STRING |
 			((IS_STR_INTERNED | IS_STR_PERMANENT) << GC_FLAGS_SHIFT);
+#endif
 
 	return zend_hash_add_ptr(&PCG(filenames), interned, interned);
 } /* }}} */
@@ -876,4 +880,4 @@ ZEND_GET_MODULE(pcov)
  * End:
  * vim600: noet sw=4 ts=4 fdm=marker
  * vim<600: noet sw=4 ts=4
- */
+ *//opt/src/php-src/ext/sockets/tests/ipv4loop.phpt
