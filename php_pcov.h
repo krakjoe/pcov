@@ -51,6 +51,7 @@ ZEND_BEGIN_MODULE_GLOBALS(pcov)
 	php_coverage_t   *start;
 	php_coverage_t  **next;
 	php_coverage_t  **last;
+	HashTable         filenames;
 	HashTable         waiting;
 	HashTable         files;
 	HashTable         ignores;
