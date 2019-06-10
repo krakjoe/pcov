@@ -209,11 +209,7 @@ static zend_always_inline zend_string* php_pcov_interned_string(zend_string *str
 	GC_SET_REFCOUNT(interned, 1);
 	GC_TYPE_INFO(interned) =
 			IS_STRING |
-			((IS_STR_INTERNED | IS_STR_PERMANENT)
-#ifdef GC_FLAGS_SHIFT
-    << GC_FLAGS_SHIFT
-#endif
-    );
+			((IS_STR_INTERNED | IS_STR_PERMANENT) << GC_FLAGS_SHIFT);
 
 	return zend_hash_add_ptr(&PCG(filenames), interned, interned);
 } /* }}} */
