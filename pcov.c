@@ -49,6 +49,7 @@
 #if PHP_VERSION_ID < 70300
 #define php_pcre_pce_incref(c) (c)->refcount++
 #define php_pcre_pce_decref(c) (c)->refcount--
+#define GC_SET_REFCOUNT(ref, rc) (GC_REFCOUNT(ref) = (rc))
 #endif
 
 #define PHP_PCOV_API_ENABLED_GUARD() do { \
@@ -188,11 +189,33 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(zend_uchar opcode) {
 } /* }}} */
 
 static zend_always_inline zend_string* php_pcov_interned_string(zend_string *string) { /* {{{ */
+	zend_string *interned;
+
 	if (ZSTR_IS_INTERNED(string)) {
 		return string;
 	}
 
-	return zend_new_interned_string(string);
+	if ((interned = zend_hash_find_ptr(&PCG(filenames), string))) {
+		return interned;
+	}
+
+	interned = (zend_string*) calloc(1, _ZSTR_STRUCT_SIZE(ZSTR_LEN(string)));
+
+	memcpy(
+		interned,
+		string,
+		_ZSTR_STRUCT_SIZE(ZSTR_LEN(string)));
+
+	GC_SET_REFCOUNT(interned, 1);
+#if PHP_VERSION_ID < 70200
+    GC_FLAGS(interned) |= IS_STR_PERMANENT | IS_STR_INTERNED;
+#else
+	GC_TYPE_INFO(interned) =
+			IS_STRING |
+			((IS_STR_INTERNED | IS_STR_PERMANENT) << GC_FLAGS_SHIFT);
+#endif
+
+	return zend_hash_add_ptr(&PCG(filenames), interned, interned);
 } /* }}} */
 
 static zend_always_inline php_coverage_t* php_pcov_create(zend_execute_data *execute_data) { /* {{{ */
@@ -275,6 +298,10 @@ void php_pcov_execute_ex(zend_execute_data *execute_data) { /* {{{ */
 void php_pcov_files_dtor(zval *zv) { /* {{{ */
 	destroy_op_array(Z_PTR_P(zv));
 	efree(Z_PTR_P(zv));
+} /* }}} */
+
+void php_pcov_filename_dtor(zval *zv) { /* {{{ */
+	free(Z_PTR_P(zv));
 } /* }}} */
 
 /* {{{ PHP_MINIT_FUNCTION
@@ -386,6 +413,7 @@ PHP_RINIT_FUNCTION(pcov)
 	zend_hash_init(&PCG(ignores),    INI_INT("pcov.initial.files"), NULL, NULL, 0);
 	zend_hash_init(&PCG(wants),      INI_INT("pcov.initial.files"), NULL, NULL, 0);
 	zend_hash_init(&PCG(discovered), INI_INT("pcov.initial.files"), NULL, ZVAL_PTR_DTOR, 0);
+	zend_hash_init(&PCG(filenames),  INI_INT("pcov.initial.files"), NULL, php_pcov_filename_dtor, 0);
 
 	php_pcov_setup_directory(INI_STR("pcov.directory"));
 	php_pcov_setup_exclude(INI_STR("pcov.exclude"));
@@ -420,6 +448,7 @@ PHP_RSHUTDOWN_FUNCTION(pcov)
 	zend_hash_destroy(&PCG(wants));
 	zend_hash_destroy(&PCG(discovered));
 	zend_hash_destroy(&PCG(waiting));
+	zend_hash_destroy(&PCG(filenames));
 
 	zend_arena_destroy(PCG(mem));
 

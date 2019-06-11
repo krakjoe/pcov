@@ -6,7 +6,6 @@ addons:
     packages:
       - valgrind
 php:
-  - 7.1
   - 7.2
   - 7.3
   - 7.4snapshot
@@ -53,7 +52,6 @@ before_script:
   - echo "/usr/bin/valgrind --suppressions=$HOME/default.supp \$@" >> $HOME/bin/valgrind
   - chmod +x $HOME/bin/valgrind
   - export PATH=$HOME/bin:$PATH
-
   - echo "variables_order=EGPCS"                 >> $HOME/.phpenv/versions/$TRAVIS_PHP_VERSION/etc/php.ini
   - echo                                         > $HOME/.phpenv/versions/$TRAVIS_PHP_VERSION/etc/conf.d/xdebug.ini
   - echo "extension=pcov.so"                     > $HOME/.phpenv/versions/$TRAVIS_PHP_VERSION/etc/conf.d/pcov.ini
@@ -68,3 +66,7 @@ script:
   - make $RULE
   - make install
   - php run-tests.php -P
+  - git clone https://github.com/sebastianbergmann/php-code-coverage
+  - cd php-code-coverage
+  - composer install --ignore-platform-reqs
+  - vendor/bin/phpunit -c phpunit.xml
