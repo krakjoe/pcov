@@ -417,7 +417,9 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 				BB_START(i + 1);
 				break;
 			case ZEND_DECLARE_ANON_CLASS:
+#ifdef ZEND_DECLARE_ANON_INHERITED_CLASS
 			case ZEND_DECLARE_ANON_INHERITED_CLASS:
+#endif
 			case ZEND_FE_FETCH_R:
 			case ZEND_FE_FETCH_RW:
 				BB_START(ZEND_OFFSET_TO_OPLINE_NUM(op_array, opline, opline->extended_value));
@@ -588,7 +590,9 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 				}
 				break;
 			case ZEND_DECLARE_ANON_CLASS:
+#ifdef ZEND_DECLARE_ANON_INHERITED_CLASS
 			case ZEND_DECLARE_ANON_INHERITED_CLASS:
+#endif
 			case ZEND_FE_FETCH_R:
 			case ZEND_FE_FETCH_RW:
 				block->successors_count = 2;
