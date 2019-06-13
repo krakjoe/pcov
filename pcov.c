@@ -167,11 +167,15 @@ static zend_always_inline zend_bool php_pcov_ignored_opcode(zend_uchar opcode) {
 	    opcode == ZEND_SEND_UNPACK ||
 	    opcode == ZEND_DECLARE_CONST ||
 	    opcode == ZEND_DECLARE_CLASS ||
+#ifdef ZEND_DECLARE_INHERITED_CLASS
 	    opcode == ZEND_DECLARE_INHERITED_CLASS ||
-	    opcode == ZEND_DECLARE_FUNCTION ||
 	    opcode == ZEND_DECLARE_INHERITED_CLASS_DELAYED ||
-	    opcode == ZEND_DECLARE_ANON_CLASS ||
 	    opcode == ZEND_DECLARE_ANON_INHERITED_CLASS ||
+#else
+	    opcode == ZEND_DECLARE_CLASS_DELAYED ||
+#endif
+	    opcode == ZEND_DECLARE_FUNCTION ||
+	    opcode == ZEND_DECLARE_ANON_CLASS ||
 	    opcode == ZEND_FAST_RET ||
 	    opcode == ZEND_FAST_CALL ||
 	    opcode == ZEND_TICKS ||
