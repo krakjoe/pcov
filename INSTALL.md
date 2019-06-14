@@ -20,7 +20,7 @@ Use `develop` branch for development, use `release` branch for last stable relea
 
 **From PECL**
 
-    `pecl install pcov`
+    pecl install pcov
 
 **Binary distributions**
 
