@@ -79,7 +79,7 @@ The recommended defaults for development should be:
   * `pcov.enabled = 1`
   * `pcov.directory = /path/to/your/source/directory`
 
-When `pcov.directory` is left unset, pcov will attempt to find `src`, `lib` or, `app` in the current
+When `pcov.directory` is left unset, PCOV will attempt to find `src`, `lib` or, `app` in the current
 working directory, in that order; If none are found the current directory will be used, which may waste resources storing
 coverage information for the test suite.
 
@@ -94,16 +94,16 @@ To avoid reallocation of tables, `pcov.initial.files` should be set to a number 
 Interoperability
 ================
 
-When pcov is enabled by configuration `pcov.enabled=1`:
+When PCOV is enabled by configuration `pcov.enabled=1`:
 
   * interoperability with Xdebug is not possible
   * interoperability with phpdbg is not possible
 
 At an internals level, the executor function is overriden by pcov, so any extension or SAPI which does the same will be broken.
 
-When pcov is disabled by configuration `pcov.enabled=0`:
+When PCOV is disabled by configuration `pcov.enabled=0`:
 
-  * pcov is zero cost - code runs at full speed
+  * PCOV is zero cost - code runs at full speed
   * Xdebug may be loaded
   * phpdbg may be executed
 
@@ -140,4 +140,4 @@ While Xdebug and PCOV both do the same kind of analysis of code, Xdebug is curre
 Differences in Performance
 ==========================
 
-The differences in performance of Xdebug and PCOV are not slight. Xdebug is a first and foremost a debugging extension, and when you load it, you incur the overhead of a debugger even when it's disabled. PCOV is less than 1000 lines of code (not including CFG) and doesn't have anything like the overhead of a debugger.
+The differences in performance of Xdebug and PCOV are not slight. Xdebug is first and foremost a debugging extension, and when you load it, you incur the overhead of a debugger even when it's disabled. PCOV is less than 1000 lines of code (not including CFG) and doesn't have anything like the overhead of a debugger.
