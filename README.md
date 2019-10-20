@@ -16,41 +16,46 @@ API
 ===
 
 ```php
-/*
-* Shall start recording coverage information
-**/
-function \pcov\start(void) : void;
+/**
+ * Shall start recording coverage information
+ */
+function \pcov\start() : void;
 
-/*
-* Shall stop recording coverage information
-**/
-function \pcov\stop(void) : void;
+/**
+ * Shall stop recording coverage information
+ */
+function \pcov\stop() : void;
 
-/*
-* Shall collect coverage information
-* @param integer \pcov\all        shall collect coverage information for all files
-*		 \pcov\inclusive  shall collect coverage information for the specified files
-*		 \pcov\exclusive  shall collect coverage information for all but the specified files
-* @param array   filenames
-* Note: paths in filter must be realpath
-*/
+/**
+ * Shall collect coverage information
+ *
+ * @param integer $type define witch type of information should be collected
+ *		 \pcov\all        shall collect coverage information for all files
+ *		 \pcov\inclusive  shall collect coverage information for the specified files
+ *		 \pcov\exclusive  shall collect coverage information for all but the specified files
+ * @param array $filter path of files (realpath) that should be filtered
+ *
+ * @return array
+ */
 function \pcov\collect(int $type = \pcov\all, array $filter = []) : array;
 
-/*
-* Shall clear stored information
-* @param bool set true to clear file tables
-* Note: clearing the file tables may have surprising consequences
-*/
+/**
+ * Shall clear stored information
+ *
+ * @param bool $files set true to clear file tables
+ *
+ * Note: clearing the file tables may have surprising consequences
+ */
 function \pcov\clear(bool $files = false) : void;
 
-/*
-* Shall return list of files waiting to be collected
-*/
+/**
+ * Shall return list of files waiting to be collected
+ */
 function \pcov\waiting() : array;
 
-/*
-* Shall return the current size of the trace and cfg arena
-*/
+/**
+ * Shall return the current size of the trace and cfg arena
+ */
 function \pcov\memory() : int;
 ```
 
