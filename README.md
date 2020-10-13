@@ -103,6 +103,7 @@ When PCOV is enabled by configuration `pcov.enabled=1`:
 
   * interoperability with Xdebug is not possible
   * interoperability with phpdbg is not possible
+  * interoperability with Blackfire profiler is not possible
 
 At an internals level, the executor function is overriden by pcov, so any extension or SAPI which does the same will be broken.
 
@@ -111,6 +112,7 @@ When PCOV is disabled by configuration `pcov.enabled=0`:
   * PCOV is zero cost - code runs at full speed
   * Xdebug may be loaded
   * phpdbg may be executed
+  * Blackfire probe may be loaded
 
 At an internals level, the executor function is untouched, and pcov allocates no memory.
 
