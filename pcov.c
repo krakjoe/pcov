@@ -28,7 +28,13 @@
 #include "ext/pcre/php_pcre.h"
 
 #include "zend_arena.h"
-#include "zend_cfg.h"
+#if PHP_VERSION_ID < 80100
+# include "zend_cfg.h"
+# define PHP_PCOV_CFG ZEND_RT_CONSTANTS
+#else
+# include "Zend/Optimizer/zend_cfg.h"
+# define PHP_PCOV_CFG 0
+#endif
 #include "zend_exceptions.h"
 #include "zend_vm.h"
 #include "zend_vm_opcodes.h"
@@ -541,7 +547,7 @@ static zend_always_inline void php_pcov_discover_code(zend_arena **arena, zend_o
 
 	memset(&cfg, 0, sizeof(zend_cfg));
 
-	zend_build_cfg(arena, ops,  ZEND_RT_CONSTANTS, &cfg);
+	zend_build_cfg(arena, ops,  PHP_PCOV_CFG, &cfg);
 
 	for (block = cfg.blocks, i = 0; i < cfg.blocks_count; i++, block++) {
 		zend_op *opline = ops->opcodes + block->start,
