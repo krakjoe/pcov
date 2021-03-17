@@ -269,7 +269,7 @@ zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
 		return result;
 	}
 
-	zend_hash_add_mem(
+	result = zend_hash_add_mem(
 			&PCG(files),
 			result->filename,
 			result, sizeof(zend_op_array));
