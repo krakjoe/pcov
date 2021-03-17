@@ -259,7 +259,7 @@ static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) { 
 } /* }}} */
 
 zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
-	zend_op_array *result = zend_compile_file_function(fh, type);
+	zend_op_array *result = zend_compile_file_function(fh, type), *mem;
 
 	if (!result || !result->filename || !php_pcov_wants(result->filename)) {
 		return result;
@@ -269,7 +269,7 @@ zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
 		return result;
 	}
 
-	result = zend_hash_add_mem(
+	mem = zend_hash_add_mem(
 			&PCG(files),
 			result->filename,
 			result, sizeof(zend_op_array));
@@ -283,6 +283,7 @@ zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
 			GC_ADDREF(result->static_variables);
 		}
 	}
+	mem->fn_flags &= ~ZEND_ACC_HEAP_RT_CACHE;
 #else
 	function_add_ref((zend_function*)result);
 #endif
