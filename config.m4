@@ -20,9 +20,12 @@ if test "$PHP_PCOV" != "no"; then
       elif test $PHP_VERSION -lt 70300; then
         AC_MSG_RESULT(7.2)
         PHP_PCOV_CFG_VERSION=702
-      else
-        AC_MSG_RESULT(7.3+)
+      elif test $PHP_VERSION -lt 70400; then
+        AC_MSG_RESULT(7.3)
         PHP_PCOV_CFG_VERSION=703
+      else
+        AC_MSG_RESULT(7.4+)
+        PHP_PCOV_CFG_VERSION=704
       fi
       
     PHP_NEW_EXTENSION(pcov, pcov.c cfg/$PHP_PCOV_CFG_VERSION/zend_cfg.c, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)

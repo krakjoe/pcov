@@ -14,10 +14,10 @@ if (PHP_PCOV != "no") {
 	} else {
 		var cfg_dir;
 
-		if (PHP_VERSION >= 7 && PHP_MINOR_VERSION < 3) {
+		if (PHP_VERSION >= 7 && PHP_MINOR_VERSION < 4) {
 			cfg_dir = PHP_VERSION + "0" + PHP_MINOR_VERSION;
 		} else {
-			cfg_dir = "703";
+			cfg_dir = "704";
 		}
 		
 		EXTENSION("pcov", "pcov.c", PHP_PCOV_SHARED, 
