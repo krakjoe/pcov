@@ -417,9 +417,7 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 				BB_START(i + 1);
 				break;
 			case ZEND_DECLARE_ANON_CLASS:
-#ifdef ZEND_DECLARE_ANON_INHERITED_CLASS
 			case ZEND_DECLARE_ANON_INHERITED_CLASS:
-#endif
 			case ZEND_FE_FETCH_R:
 			case ZEND_FE_FETCH_RW:
 				BB_START(ZEND_OFFSET_TO_OPLINE_NUM(op_array, opline, opline->extended_value));
@@ -442,7 +440,6 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 				BB_START(i + 1);
 				break;
 			}
-#if PHP_VERSION_ID < 70400
 			case ZEND_UNSET_VAR:
 			case ZEND_ISSET_ISEMPTY_VAR:
 				if (opline->extended_value & ZEND_FETCH_LOCAL) {
@@ -452,17 +449,12 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 					flags |= ZEND_FUNC_INDIRECT_VAR_ACCESS;
 				}
 				break;
-#endif
 			case ZEND_FETCH_R:
 			case ZEND_FETCH_W:
 			case ZEND_FETCH_RW:
 			case ZEND_FETCH_FUNC_ARG:
 			case ZEND_FETCH_IS:
 			case ZEND_FETCH_UNSET:
-#if PHP_VERSION_ID >= 70400
-			case ZEND_UNSET_VAR:
-			case ZEND_ISSET_ISEMPTY_VAR: 
-#endif
 				if (opline->extended_value & ZEND_FETCH_LOCAL) {
 					flags |= ZEND_FUNC_INDIRECT_VAR_ACCESS;
 				} else if ((opline->extended_value & (ZEND_FETCH_GLOBAL | ZEND_FETCH_GLOBAL_LOCK)) &&
@@ -590,9 +582,7 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 				}
 				break;
 			case ZEND_DECLARE_ANON_CLASS:
-#ifdef ZEND_DECLARE_ANON_INHERITED_CLASS
 			case ZEND_DECLARE_ANON_INHERITED_CLASS:
-#endif
 			case ZEND_FE_FETCH_R:
 			case ZEND_FE_FETCH_RW:
 				block->successors_count = 2;
