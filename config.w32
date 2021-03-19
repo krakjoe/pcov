@@ -4,7 +4,7 @@
 ARG_ENABLE("pcov", "enable php coverage support", "no");
 
 if (PHP_PCOV != "no") {
-	if (PHP_VERSION < 7 || PHP_VERSION >= 7 && PHP_MINOR_VERSION < 1) {
+	if (PHP_VERSION < 7 || PHP_VERSION == 7 && PHP_MINOR_VERSION < 1) {
 		ERROR("pcov supports PHP 7.1+");
 	}
 
