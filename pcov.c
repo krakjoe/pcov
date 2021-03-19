@@ -649,7 +649,7 @@ static void php_pcov_discover_file(zend_string *file, zval *return_value) { /* {
 	zend_hash_update(&PCG(discovered), file, &discovered);
 	zend_arena_destroy(mem);
 	
-	return php_pcov_discover_file(file, return_value);
+	php_pcov_discover_file(file, return_value);
 } /* }}} */
 
 static zend_always_inline void php_pcov_clean(HashTable *table) { /* {{{ */
