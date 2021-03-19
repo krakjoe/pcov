@@ -20,7 +20,7 @@ Use `develop` branch for development, use `release` branch for last stable relea
 
 **From PECL**
 
-    `pecl install pcov`
+    pecl install pcov
 
 **Binary distributions**
 
@@ -30,3 +30,10 @@ Use `develop` branch for development, use `release` branch for last stable relea
 
     `dnf install php-pecl-pcov`
 
+* **Ubuntu** Setup Ubuntu PPA [ppa:ondrej/php](https://launchpad.net/~ondrej/+archive/ubuntu/php/)
+
+    `apt install php-pcov`
+
+* **Debian** Setup Debian DPA [packages.sury.org/php](https://packages.sury.org/php/) 
+
+    `apt install php-pcov`

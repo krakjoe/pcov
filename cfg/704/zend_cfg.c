@@ -2,7 +2,7 @@
    +----------------------------------------------------------------------+
    | Zend Engine, CFG - Control Flow Graph                                |
    +----------------------------------------------------------------------+
-   | Copyright (c) 1998-2018 The PHP Group                                |
+   | Copyright (c) The PHP Group                                          |
    +----------------------------------------------------------------------+
    | This source file is subject to version 3.01 of the PHP license,      |
    | that is bundled with this package in the file LICENSE, and is        |
@@ -14,7 +14,7 @@
    +----------------------------------------------------------------------+
    | Authors: Dmitry Stogov <dmitry@php.net>                              |
    +----------------------------------------------------------------------+
-
+   
    This source file has been adapted for pcov so that the CFG from O+ is standalone
 */
 
@@ -29,10 +29,12 @@
 #define ZEND_FUNC_VARARG                   (1<<2)  /* uses func_get_args()        */
 #define ZEND_FUNC_NO_LOOPS                 (1<<3)
 #define ZEND_FUNC_IRREDUCIBLE              (1<<4)
+#define ZEND_FUNC_FREE_LOOP_VAR            (1<<5)
 #define ZEND_FUNC_RECURSIVE                (1<<7)
 #define ZEND_FUNC_RECURSIVE_DIRECTLY       (1<<8)
 #define ZEND_FUNC_RECURSIVE_INDIRECTLY     (1<<9)
-#define ZEND_FUNC_HAS_EXTENDED_INFO        (1<<10)
+#define ZEND_FUNC_HAS_EXTENDED_FCALL       (1<<10)
+#define ZEND_FUNC_HAS_EXTENDED_STMT        (1<<11)
 
 /* The following flags are valid only for return values of internal functions
  * returned by zend_get_func_info()
@@ -62,6 +64,8 @@ static uint32_t zend_cfg_classify_function(zend_string *name, uint32_t num_args)
 	} else if (zend_string_equals_literal(name, "get_defined_vars")) {
 		return ZEND_FUNC_INDIRECT_VAR_ACCESS;
 	} else if (zend_string_equals_literal(name, "assert")) {
+		return ZEND_FUNC_INDIRECT_VAR_ACCESS;
+	} else if (zend_string_equals_literal(name, "db2_execute")) {
 		return ZEND_FUNC_INDIRECT_VAR_ACCESS;
 	} else if (zend_string_equals_literal(name, "func_num_args")) {
 		return ZEND_FUNC_VARARG;
@@ -160,56 +164,13 @@ static void zend_mark_reachable_blocks(const zend_op_array *op_array, zend_cfg *
 	blocks[start].flags = ZEND_BB_START;
 	zend_mark_reachable(op_array->opcodes, cfg, blocks + start);
 
-	if (op_array->last_live_range || op_array->last_try_catch) {
+	if (op_array->last_try_catch) {
 		zend_basic_block *b;
 		int j, changed;
 		uint32_t *block_map = cfg->map;
 
 		do {
 			changed = 0;
-
-			/* Add live range paths */
-			for (j = 0; j < op_array->last_live_range; j++) {
-				zend_live_range *live_range = &op_array->live_range[j];
-				if (live_range->var == (uint32_t)-1) {
-					/* this live range already removed */
-					continue;
-				}
-				b = blocks + block_map[live_range->start];
-				if (b->flags & ZEND_BB_REACHABLE) {
-					while (b->len > 0 && op_array->opcodes[b->start].opcode == ZEND_NOP) {
-					    /* check if NOP breaks incorrect smart branch */
-						if (b->len == 2
-						 && (op_array->opcodes[b->start + 1].opcode == ZEND_JMPZ
-						  || op_array->opcodes[b->start + 1].opcode == ZEND_JMPNZ)
-						 && (op_array->opcodes[b->start + 1].op1_type & (IS_CV|IS_CONST))
-						 && b->start > 0
-						 && zend_is_smart_branch(op_array->opcodes + b->start - 1)) {
-							break;
-						}
-						b->start++;
-						b->len--;
-					}
-					if (b->len == 0 && (uint32_t)b->successors[0] == block_map[live_range->end]) {
-						/* mark as removed (empty live range) */
-						live_range->var = (uint32_t)-1;
-						continue;
-					}
-					b->flags |= ZEND_BB_GEN_VAR;
-					b = blocks + block_map[live_range->end];
-					b->flags |= ZEND_BB_KILL_VAR;
-					if (!(b->flags & (ZEND_BB_REACHABLE|ZEND_BB_UNREACHABLE_FREE))) {
-						if ((cfg->flags & ZEND_CFG_SPLIT_AT_LIVE_RANGES)) {
-							changed = 1;
-							zend_mark_reachable(op_array->opcodes, cfg, b);
-						} else {
-							b->flags |= ZEND_BB_UNREACHABLE_FREE;
-						}
-					}
-				} else {
-					ZEND_ASSERT(!(blocks[block_map[live_range->end]].flags & ZEND_BB_REACHABLE));
-				}
-			}
 
 			/* Add exception paths */
 			for (j = 0; j < op_array->last_try_catch; j++) {
@@ -290,6 +251,29 @@ static void zend_mark_reachable_blocks(const zend_op_array *op_array, zend_cfg *
 }
 /* }}} */
 
+void zend_cfg_remark_reachable_blocks(const zend_op_array *op_array, zend_cfg *cfg) /* {{{ */
+{
+	zend_basic_block *blocks = cfg->blocks;
+	int i;
+	int start = 0;
+
+	for (i = 0; i < cfg->blocks_count; i++) {
+		if (blocks[i].flags & ZEND_BB_REACHABLE) {
+			start = i;
+			i++;
+			break;
+		}
+	}
+
+	/* clear all flags */
+	for (i = 0; i < cfg->blocks_count; i++) {
+		blocks[i].flags = 0;
+	}
+
+	zend_mark_reachable_blocks(op_array, cfg, start);
+}
+/* }}} */
+
 static void initialize_block(zend_basic_block *block) {
 	block->flags = 0;
 	block->successors = block->successors_storage;
@@ -320,7 +304,7 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 	zval *zv;
 	zend_bool extra_entry_block = 0;
 
-	cfg->flags = build_flags & (ZEND_CFG_SPLIT_AT_LIVE_RANGES|ZEND_CFG_STACKLESS|ZEND_CFG_RECV_ENTRY);
+	cfg->flags = build_flags & (ZEND_CFG_STACKLESS|ZEND_CFG_RECV_ENTRY);
 
 	cfg->map = block_map = zend_arena_calloc(arena, op_array->last, sizeof(uint32_t));
 
@@ -416,8 +400,6 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 				}
 				BB_START(i + 1);
 				break;
-			case ZEND_DECLARE_ANON_CLASS:
-			case ZEND_DECLARE_ANON_INHERITED_CLASS:
 			case ZEND_FE_FETCH_R:
 			case ZEND_FE_FETCH_RW:
 				BB_START(ZEND_OFFSET_TO_OPLINE_NUM(op_array, opline, opline->extended_value));
@@ -440,21 +422,14 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 				BB_START(i + 1);
 				break;
 			}
-			case ZEND_UNSET_VAR:
-			case ZEND_ISSET_ISEMPTY_VAR:
-				if (opline->extended_value & ZEND_FETCH_LOCAL) {
-					flags |= ZEND_FUNC_INDIRECT_VAR_ACCESS;
-				} else if ((opline->extended_value & (ZEND_FETCH_GLOBAL | ZEND_FETCH_GLOBAL_LOCK)) &&
-				           !op_array->function_name) {
-					flags |= ZEND_FUNC_INDIRECT_VAR_ACCESS;
-				}
-				break;
 			case ZEND_FETCH_R:
 			case ZEND_FETCH_W:
 			case ZEND_FETCH_RW:
 			case ZEND_FETCH_FUNC_ARG:
 			case ZEND_FETCH_IS:
 			case ZEND_FETCH_UNSET:
+			case ZEND_UNSET_VAR:
+			case ZEND_ISSET_ISEMPTY_VAR:
 				if (opline->extended_value & ZEND_FETCH_LOCAL) {
 					flags |= ZEND_FUNC_INDIRECT_VAR_ACCESS;
 				} else if ((opline->extended_value & (ZEND_FETCH_GLOBAL | ZEND_FETCH_GLOBAL_LOCK)) &&
@@ -467,9 +442,19 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 				break;
 			case ZEND_EXT_NOP:
 			case ZEND_EXT_STMT:
+				flags |= ZEND_FUNC_HAS_EXTENDED_STMT;
+				break;
 			case ZEND_EXT_FCALL_BEGIN:
 			case ZEND_EXT_FCALL_END:
-				flags |= ZEND_FUNC_HAS_EXTENDED_INFO;
+				flags |= ZEND_FUNC_HAS_EXTENDED_FCALL;
+				break;
+			case ZEND_FREE:
+				if (opline->extended_value == ZEND_FREE_SWITCH) {
+					flags |= ZEND_FUNC_FREE_LOOP_VAR;
+				}
+				break;
+			case ZEND_FE_FREE:
+				flags |= ZEND_FUNC_FREE_LOOP_VAR;
 				break;
 		}
 	}
@@ -478,13 +463,6 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 	if ((build_flags & ZEND_CFG_NO_ENTRY_PREDECESSORS)
 			&& op_array->last > 0 && block_map[0] > 1) {
 		extra_entry_block = 1;
-	}
-
-	if ((cfg->flags & ZEND_CFG_SPLIT_AT_LIVE_RANGES)) {
-		for (j = 0; j < op_array->last_live_range; j++) {
-			BB_START(op_array->live_range[j].start);
-			BB_START(op_array->live_range[j].end);
-		}
 	}
 
 	if (op_array->last_try_catch) {
@@ -581,8 +559,6 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 					block->successors[0] = j + 1;
 				}
 				break;
-			case ZEND_DECLARE_ANON_CLASS:
-			case ZEND_DECLARE_ANON_INHERITED_CLASS:
 			case ZEND_FE_FETCH_R:
 			case ZEND_FE_FETCH_RW:
 				block->successors_count = 2;
@@ -626,18 +602,11 @@ int zend_build_cfg(zend_arena **arena, const zend_op_array *op_array, uint32_t b
 	}
 
 	/* Build CFG, Step 4, Mark Reachable Basic Blocks */
-	zend_mark_reachable_blocks(op_array, cfg, 0);
-
 	cfg->flags |= flags;
+	zend_mark_reachable_blocks(op_array, cfg, 0);
 
 	return SUCCESS;
 }
 /* }}} */
 
-/*
- * Local variables:
- * tab-width: 4
- * c-basic-offset: 4
- * indent-tabs-mode: t
- * End:
- */
+/* }}} */

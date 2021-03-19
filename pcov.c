@@ -28,7 +28,13 @@
 #include "ext/pcre/php_pcre.h"
 
 #include "zend_arena.h"
-#include "zend_cfg.h"
+#if PHP_VERSION_ID < 80100
+# include "zend_cfg.h"
+# define PHP_PCOV_CFG ZEND_RT_CONSTANTS
+#else
+# include "Zend/Optimizer/zend_cfg.h"
+# define PHP_PCOV_CFG 0
+#endif
 #include "zend_exceptions.h"
 #include "zend_vm.h"
 #include "zend_vm_opcodes.h"
@@ -253,7 +259,7 @@ static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) { 
 } /* }}} */
 
 zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
-	zend_op_array *result = zend_compile_file_function(fh, type);
+	zend_op_array *result = zend_compile_file_function(fh, type), *mem;
 
 	if (!result || !result->filename || !php_pcov_wants(result->filename)) {
 		return result;
@@ -263,7 +269,7 @@ zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
 		return result;
 	}
 
-	zend_hash_add_mem(
+	mem = zend_hash_add_mem(
 			&PCG(files),
 			result->filename,
 			result, sizeof(zend_op_array));
@@ -277,7 +283,9 @@ zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
 			GC_ADDREF(result->static_variables);
 		}
 	}
+	mem->fn_flags &= ~ZEND_ACC_HEAP_RT_CACHE;
 #else
+	(void)mem;
 	function_add_ref((zend_function*)result);
 #endif
 
@@ -491,7 +499,7 @@ PHP_MINFO_FUNCTION(pcov)
 		PHP_PCOV_VERSION);
 	php_info_print_table_row(2,
 		"pcov.directory",
-		directory && *directory ? directory : "auto");
+		directory && *directory ? directory : ZSTR_VAL(PCG(directory)));
 	php_info_print_table_row(2,
 		"pcov.exclude",
 		exclude   && *exclude   ? exclude : "none" );
@@ -541,7 +549,7 @@ static zend_always_inline void php_pcov_discover_code(zend_arena **arena, zend_o
 
 	memset(&cfg, 0, sizeof(zend_cfg));
 
-	zend_build_cfg(arena, ops,  ZEND_RT_CONSTANTS, &cfg);
+	zend_build_cfg(arena, ops,  PHP_PCOV_CFG, &cfg);
 
 	for (block = cfg.blocks, i = 0; i < cfg.blocks_count; i++, block++) {
 		zend_op *opline = ops->opcodes + block->start,
