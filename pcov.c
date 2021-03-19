@@ -499,7 +499,7 @@ PHP_MINFO_FUNCTION(pcov)
 		PHP_PCOV_VERSION);
 	php_info_print_table_row(2,
 		"pcov.directory",
-		directory && *directory ? directory : (PCG(directory) ? ZSTR_VAL(PCG(directory)) : "none"));
+		directory && *directory ? directory : (PCG(directory) ? ZSTR_VAL(PCG(directory)) : "auto"));
 	php_info_print_table_row(2,
 		"pcov.exclude",
 		exclude   && *exclude   ? exclude : "none" );
