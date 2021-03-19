@@ -3,7 +3,7 @@
  <name>pcov</name>
  <channel>pecl.php.net</channel>
  <summary>Code coverage driver</summary>
- <description>A self contained php-code-coverage compatible driver for PHP7.</description>
+ <description>A self contained php-code-coverage compatible driver for PHP.</description>
  <lead>
   <name>Joe Watkins</name>
   <user>krakjoe</user>
