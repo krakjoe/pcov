@@ -285,6 +285,7 @@ zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
 	}
 	mem->fn_flags &= ~ZEND_ACC_HEAP_RT_CACHE;
 #else
+	(void)mem;
 	function_add_ref((zend_function*)result);
 #endif
 
