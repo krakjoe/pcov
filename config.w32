@@ -4,22 +4,22 @@
 ARG_ENABLE("pcov", "enable php coverage support", "no");
 
 if (PHP_PCOV != "no") {
-	if (PHP_VERSION < 7 || PHP_VERSION >= 7 && PHP_MINOR_VERSION < 1) {
+	if (PHP_VERSION < 7 || PHP_VERSION == 7 && PHP_MINOR_VERSION < 1) {
 		ERROR("pcov supports PHP 7.1+");
 	}
 
-	if (PHP_VERSION >= 8 && PHP_MINOR_VERSION >= 1) {
+	if (PHP_VERSION > 8 || PHP_VERSION == 8 && PHP_MINOR_VERSION >= 1) {
 		EXTENSION("pcov", "pcov.c", PHP_PCOV_SHARED, 
 		"/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");	
 	} else {
 		var cfg_dir;
 
-		if (PHP_VERSION >= 7 && PHP_MINOR_VERSION < 4) {
+		if (PHP_VERSION == 7 && PHP_MINOR_VERSION < 4) {
 			cfg_dir = PHP_VERSION + "0" + PHP_MINOR_VERSION;
 		} else {
 			cfg_dir = "704";
 		}
-		
+
 		EXTENSION("pcov", "pcov.c", PHP_PCOV_SHARED, 
 			"/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 /I" + 
 				configure_module_dirname + "/cfg/" +  cfg_dir);
@@ -30,4 +30,3 @@ if (PHP_PCOV != "no") {
 		);
 	}
 }
-

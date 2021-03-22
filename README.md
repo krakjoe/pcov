@@ -4,7 +4,7 @@ PCOV
 [![Build Status](https://travis-ci.org/krakjoe/pcov.svg?branch=develop)](https://travis-ci.org/krakjoe/pcov)
 [![Build status](https://ci.appveyor.com/api/projects/status/w265n0w7yk6o3y6m?svg=true)](https://ci.appveyor.com/project/krakjoe/pcov)
 
-A self contained [CodeCoverage](https://github.com/sebastianbergmann/php-code-coverage) compatible driver for PHP7
+A self contained [CodeCoverage](https://github.com/sebastianbergmann/php-code-coverage) compatible driver for PHP
 
 Requirements and Installation
 =============================
@@ -136,7 +136,7 @@ While the accuracy of Xdebug and PCOV are comparable, the reports they generate 
 ```php
 /* 2 */ switch ($condition) {
 /* 3 */		case 1:
-/* 4 */			return "PHP7 rox!";
+/* 4 */			return "PHP rox!";
 /* 5 */	}
 ```
 
