@@ -16,9 +16,9 @@
   <email>remi@php.net</email>
   <active>yes</active>
  </lead>
- <date>2021-03-19</date>
+ <date>2021-03-22</date>
  <version>
-  <release>1.0.7</release>
+  <release>1.0.8</release>
   <api>1.0.0</api>
  </version>
  <stability>
@@ -27,8 +27,7 @@
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
  <notes>
-- Fix #46 Segmentation fault on 7.4 on macOS with anonymous class
-- Fix #59 "malloc_consolidate(): invalid chunk size" with PHP 8.1
+- Fix Windows build
  </notes>
  <contents>
   <dir name="/">
@@ -83,6 +82,22 @@
  <providesextension>pcov</providesextension>
  <extsrcrelease/>
   <changelog>
+   <release>
+    <date>2021-03-19</date>
+    <version>
+     <release>1.0.7</release>
+     <api>1.0.0</api>
+    </version>
+    <stability>
+     <release>stable</release>
+     <api>stable</api>
+    </stability>
+    <license uri="http://www.php.net/license">PHP License</license>
+    <notes>
+- Fix #46 Segmentation fault on 7.4 on macOS with anonymous class
+- Fix #59 "malloc_consolidate(): invalid chunk size" with PHP 8.1
+    </notes>
+   </release>
    <release>
     <date>2019-06-13</date>
     <version>
