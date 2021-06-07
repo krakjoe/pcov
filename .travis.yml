@@ -6,7 +6,6 @@ addons:
     packages:
       - valgrind
 php:
-  - 7.4
   - 8.0
   - nightly
 
