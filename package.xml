@@ -16,9 +16,9 @@
   <email>remi@php.net</email>
   <active>yes</active>
  </lead>
- <date>2021-03-22</date>
+ <date>2021-06-07</date>
  <version>
-  <release>1.0.8</release>
+  <release>1.0.9</release>
   <api>1.0.0</api>
  </version>
  <stability>
@@ -27,7 +27,7 @@
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
  <notes>
-- Fix Windows build
+- Fix #67 huge memory consumption to generate coverage
  </notes>
  <contents>
   <dir name="/">
@@ -82,6 +82,21 @@
  <providesextension>pcov</providesextension>
  <extsrcrelease/>
   <changelog>
+   <release>
+    <date>2021-03-22</date>
+    <version>
+     <release>1.0.8</release>
+     <api>1.0.0</api>
+    </version>
+    <stability>
+     <release>stable</release>
+     <api>stable</api>
+    </stability>
+    <license uri="http://www.php.net/license">PHP License</license>
+    <notes>
+- Fix Windows build
+    </notes>
+   </release>
    <release>
     <date>2021-03-19</date>
     <version>
