@@ -885,7 +885,7 @@ const zend_function_entry php_pcov_functions[] = {
 /* {{{ pcov_module_deps[] */
 static const zend_module_dep pcov_module_deps[] = {
 	ZEND_MOD_REQUIRED("pcre")
-	{NULL, NULL, NULL}
+	ZEND_MOD_END
 }; /* }}} */
 
 /* {{{ pcov_module_entry
