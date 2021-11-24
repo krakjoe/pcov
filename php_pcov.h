@@ -21,7 +21,7 @@
 extern zend_module_entry pcov_module_entry;
 #define phpext_pcov_ptr &pcov_module_entry
 
-#define PHP_PCOV_VERSION "1.0.9"
+#define PHP_PCOV_VERSION "1.0.10"
 
 #ifdef PHP_WIN32
 #	define PHP_PCOV_API __declspec(dllexport)
@@ -49,7 +49,6 @@ ZEND_BEGIN_MODULE_GLOBALS(pcov)
 	php_coverage_t   *start;
 	php_coverage_t  **next;
 	php_coverage_t  **last;
-	HashTable         filenames;
 	HashTable         waiting;
 	HashTable         files;
 	HashTable         ignores;
