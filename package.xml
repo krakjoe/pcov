@@ -16,9 +16,9 @@
   <email>remi@php.net</email>
   <active>yes</active>
  </lead>
- <date>2021-06-07</date>
+ <date>2021-11-24</date>
  <version>
-  <release>1.0.9</release>
+  <release>1.0.10</release>
   <api>1.0.0</api>
  </version>
  <stability>
@@ -27,7 +27,8 @@
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
  <notes>
-- Fix #67 huge memory consumption to generate coverage
+- Use zend_new_interned_string instead of hand-rolling
+- Use ZEND_MOD_END to fix build warning
  </notes>
  <contents>
   <dir name="/">
@@ -82,6 +83,21 @@
  <providesextension>pcov</providesextension>
  <extsrcrelease/>
   <changelog>
+   <release>
+    <date>2021-06-07</date>
+    <version>
+     <release>1.0.9</release>
+     <api>1.0.0</api>
+    </version>
+    <stability>
+     <release>stable</release>
+     <api>stable</api>
+    </stability>
+    <license uri="http://www.php.net/license">PHP License</license>
+    <notes>
+- Fix #67 huge memory consumption to generate coverage
+    </notes>
+   </release>
    <release>
     <date>2021-03-22</date>
     <version>
