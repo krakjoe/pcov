@@ -16,9 +16,9 @@
   <email>remi@php.net</email>
   <active>yes</active>
  </lead>
- <date>2021-11-24</date>
+ <date>2021-12-20</date>
  <version>
-  <release>1.0.10</release>
+  <release>1.0.11</release>
   <api>1.0.0</api>
  </version>
  <stability>
@@ -27,8 +27,7 @@
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
  <notes>
-- Use zend_new_interned_string instead of hand-rolling
-- Use ZEND_MOD_END to fix build warning
+- Fix anonymous function coverage
  </notes>
  <contents>
   <dir name="/">
@@ -45,6 +44,7 @@
     <file name="004.phpt" role="test"/>
     <file name="005.phpt" role="test"/>
     <file name="006.phpt" role="test"/>
+    <file name="007.phpt" role="test"/>
    </dir> <!-- tests -->
    <dir name="cfg">
     <dir name="701">
@@ -83,6 +83,22 @@
  <providesextension>pcov</providesextension>
  <extsrcrelease/>
   <changelog>
+   <release>
+    <date>2021-11-24</date>
+    <version>
+     <release>1.0.10</release>
+     <api>1.0.0</api>
+    </version>
+    <stability>
+     <release>stable</release>
+     <api>stable</api>
+    </stability>
+    <license uri="http://www.php.net/license">PHP License</license>
+    <notes>
+- Use zend_new_interned_string instead of hand-rolling
+- Use ZEND_MOD_END to fix build warning
+    </notes>
+   </release>
    <release>
     <date>2021-06-07</date>
     <version>
