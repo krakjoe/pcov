@@ -1,7 +1,10 @@
 --TEST--
 anonymous function
 --SKIPIF--
-<?php if (!extension_loaded("pcov")) print "skip"; ?>
+<?php
+if (!extension_loaded("pcov")) print "skip";
+if (PHP_VERSION_ID < 80000) print "skip only for PHP 8";
+?>
 --INI--
 pcov.enabled = 1
 --FILE--
