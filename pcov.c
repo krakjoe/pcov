@@ -544,7 +544,7 @@ static zend_always_inline void php_pcov_report(php_coverage_t *coverage, zval *f
 	} while ((coverage = coverage->next));
 } /* }}} */
 
-static zend_always_inline void php_pcov_discover_code(zend_arena **arena, zend_op_array *ops, zval *return_value) { /* {{{ */
+static void php_pcov_discover_code(zend_arena **arena, zend_op_array *ops, zval *return_value) { /* {{{ */
 	zend_cfg cfg;
 	zend_basic_block *block;
 	zend_op *limit = ops->opcodes + ops->last;
