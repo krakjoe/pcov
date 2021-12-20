@@ -599,6 +599,12 @@ static zend_always_inline void php_pcov_discover_code(zend_arena **arena, zend_o
 			break;
 		}
 	}
+
+#if PHP_VERSION_ID >= 80100
+    for (uint32_t def = 0; def < ops->num_dynamic_func_defs; def++) {
+        php_pcov_discover_code(arena, ops->dynamic_func_defs[def], return_value);
+    }
+#endif
 } /* }}} */
 
 static void php_pcov_discover_file(zend_string *file, zval *return_value) { /* {{{ */
