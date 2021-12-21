@@ -39,6 +39,14 @@
 
 #include "php_pcov.h"
 
+/* Compatibility for PHP < 8 */
+#ifndef ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE
+#define ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(pass_by_ref, name, type_hint, allow_null, default_value) \
+        ZEND_ARG_TYPE_INFO(pass_by_ref, name, type_hint, allow_null)
+#endif
+
+#include "pcov_arginfo.h"
+
 #define PCOV_FILTER_ALL     0
 #define PCOV_FILTER_INCLUDE 1
 #define PCOV_FILTER_EXCLUDE 2
@@ -671,8 +679,8 @@ static zend_always_inline void php_pcov_clean(HashTable *table) { /* {{{ */
 	}
 } /* }}} */
 
-/* {{{ array \pcov\collect(int $type = \pcov\all, array $filter = []); */
-PHP_NAMED_FUNCTION(php_pcov_collect)
+/* {{{ array \pcov\collect(int $type = \pcov\all, array $filter = []): ?array; */
+ZEND_FUNCTION(collect)
 {
 	zend_long type = PCOV_FILTER_ALL;
 	zval      *filter = NULL;
@@ -744,8 +752,8 @@ PHP_NAMED_FUNCTION(php_pcov_collect)
 	php_pcov_report(PCG(start), return_value);
 } /* }}} */
 
-/* {{{ void \pcov\start(void) */
-PHP_NAMED_FUNCTION(php_pcov_start)
+/* {{{ void \pcov\start(void): void */
+ZEND_FUNCTION(start)
 {
 	if (zend_parse_parameters_none() != SUCCESS) {
 		return;
@@ -756,8 +764,8 @@ PHP_NAMED_FUNCTION(php_pcov_start)
 	PCG(enabled) = 1;
 } /* }}} */
 
-/* {{{ void \pcov\stop(void) */
-PHP_NAMED_FUNCTION(php_pcov_stop)
+/* {{{ void \pcov\stop(void): void */
+ZEND_FUNCTION(stop)
 {
 	if (zend_parse_parameters_none() != SUCCESS) {
 		return;
@@ -768,8 +776,8 @@ PHP_NAMED_FUNCTION(php_pcov_stop)
 	PCG(enabled) = 0;
 } /* }}} */
 
-/* {{{ void \pcov\clear(bool $files = 0) */
-PHP_NAMED_FUNCTION(php_pcov_clear)
+/* {{{ void \pcov\clear(bool $files = 0): void */
+ZEND_FUNCTION(clear)
 {
 	zend_bool files = 0;
 
@@ -798,8 +806,8 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 	php_pcov_clean(&PCG(covered));
 } /* }}} */
 
-/* {{{ array \pcov\waiting(void) */
-PHP_NAMED_FUNCTION(php_pcov_waiting)
+/* {{{ array \pcov\waiting(void): ?array */
+ZEND_FUNCTION(waiting)
 {
 	zend_string *waiting;
 
@@ -818,8 +826,8 @@ PHP_NAMED_FUNCTION(php_pcov_waiting)
 	} ZEND_HASH_FOREACH_END();
 } /* }}} */
 
-/* {{{ int \pcov\memory(void) */
-PHP_NAMED_FUNCTION(php_pcov_memory)
+/* {{{ int \pcov\memory(void); ?long */
+ZEND_FUNCTION(memory)
 {
 	zend_arena *arena = PCG(mem);
 
@@ -836,34 +844,6 @@ PHP_NAMED_FUNCTION(php_pcov_memory)
 	} while ((arena = arena->prev));
 } /* }}} */
 
-/* {{{ */
-ZEND_BEGIN_ARG_INFO_EX(php_pcov_collect_arginfo, 0, 0, 0)
-	ZEND_ARG_TYPE_INFO(0, type, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO(0, filter, IS_ARRAY, 0)
-ZEND_END_ARG_INFO() /* }}} */
-
-/* {{{ */
-ZEND_BEGIN_ARG_INFO_EX(php_pcov_clear_arginfo, 0, 0, 0)
-	ZEND_ARG_TYPE_INFO(0, files, _IS_BOOL, 0)
-ZEND_END_ARG_INFO() /* }}} */
-
-/* {{{ */
-ZEND_BEGIN_ARG_INFO_EX(php_pcov_no_arginfo, 0, 0, 0)
-ZEND_END_ARG_INFO() /* }}} */
-
-/* {{{ php_pcov_functions[]
- */
-const zend_function_entry php_pcov_functions[] = {
-	ZEND_NS_FENTRY("pcov", start,      php_pcov_start,         php_pcov_no_arginfo, 0)
-	ZEND_NS_FENTRY("pcov", stop,       php_pcov_stop,          php_pcov_no_arginfo, 0)
-	ZEND_NS_FENTRY("pcov", collect,    php_pcov_collect,       php_pcov_collect_arginfo, 0)
-	ZEND_NS_FENTRY("pcov", clear,      php_pcov_clear,         php_pcov_clear_arginfo, 0)
-	ZEND_NS_FENTRY("pcov", waiting,    php_pcov_waiting,       php_pcov_no_arginfo, 0)
-	ZEND_NS_FENTRY("pcov", memory,     php_pcov_memory,        php_pcov_no_arginfo, 0)
-	PHP_FE_END
-};
-/* }}} */
-
 /* {{{ pcov_module_deps[] */
 static const zend_module_dep pcov_module_deps[] = {
 	ZEND_MOD_REQUIRED("pcre")
@@ -877,7 +857,7 @@ zend_module_entry pcov_module_entry = {
 	NULL,
 	pcov_module_deps,
 	"pcov",
-	php_pcov_functions,
+	ext_functions,
 	PHP_MINIT(pcov),
 	PHP_MSHUTDOWN(pcov),
 	PHP_RINIT(pcov),
