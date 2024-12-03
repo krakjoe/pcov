@@ -1,5 +1,5 @@
 {
-    "name": "krakjoe/pcov",
+    "name": "pecl/pcov",
     "type": "php-ext",
     "license": "PHP-3.01",
     "description": "PCOV - CodeCoverage compatible driver for PHP",
