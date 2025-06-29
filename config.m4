@@ -10,7 +10,7 @@ if test "$PHP_PCOV" != "no"; then
   AC_MSG_CHECKING(PHP version)
 
   if test $PHP_VERSION -gt 80099; then
-    PHP_NEW_EXTENSION(pcov, pcov.c, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
+    PHP_NEW_EXTENSION(pcov, pcov.c, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 -std=c99)
   else
       if test $PHP_VERSION -lt 70100; then
         AC_MSG_ERROR([pcov supports PHP 7.1+])
