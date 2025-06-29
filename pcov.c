@@ -25,6 +25,12 @@
 #include "ext/standard/info.h"
 #include "ext/pcre/php_pcre.h"
 
+#if PHP_VERSION_ID >= 70400
+# define PHP_PCOV_USE_RID_CACHE 1
+#else
+# define PHP_PCOV_USE_RID_CACHE 0
+#endif
+
 #include "zend_arena.h"
 #if PHP_VERSION_ID < 80100
 # include "zend_cfg.h"
@@ -35,6 +41,9 @@
 #endif
 #include "zend_bitset.h"
 #include "zend_exceptions.h"
+#if PHP_PCOV_USE_RID_CACHE
+# include "zend_extensions.h"
+#endif
 #include "zend_vm.h"
 #include "zend_vm_opcodes.h"
 
@@ -66,6 +75,12 @@
 static zval php_pcov_uncovered;
 static zval php_pcov_covered;
 static zend_ulong php_pcov_opcode_lut[256 / ZEND_BITSET_ELM_SIZE];
+
+#if PHP_PCOV_USE_RID_CACHE
+static int php_pcov_op_array_rid;
+
+# define PHP_PCOV_OP_ARRAY_INFO(op_array) ZEND_OP_ARRAY_EXTENSION(op_array, php_pcov_op_array_rid)
+#endif
 
 void (*zend_execute_ex_function)(zend_execute_data *execute_data);
 zend_op_array* (*zend_compile_file_function)(zend_file_handle *fh, int type) = NULL;
@@ -160,6 +175,28 @@ static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) { /* {
 	return 0;
 } /* }}} */
 
+static zend_always_inline HashTable **php_pcov_get_op_array_info_ptr(const zend_op_array *op_array) {
+	ZEND_ASSERT(op_array->type == ZEND_USER_FUNCTION);
+#if PHP_PCOV_USE_RID_CACHE
+	if (EXPECTED(!(op_array->fn_flags & ZEND_ACC_CALL_VIA_TRAMPOLINE))) {
+		return (HashTable **) &PHP_PCOV_OP_ARRAY_INFO(op_array);
+	} else {
+		return NULL;
+	}
+#else
+	return NULL;
+#endif
+}
+
+static zend_always_inline zend_bool php_pcov_wants_at_runtime(const zend_op_array *op_array) {
+	HashTable **ptr = php_pcov_get_op_array_info_ptr(op_array);
+	if (ptr && *ptr) {
+		return 1;
+	}
+
+	return php_pcov_wants(op_array->filename);
+}
+
 static void php_pcov_fill_ignored_opcode_lut(void) {
 	zend_bitset_incl(php_pcov_opcode_lut, ZEND_NOP);
 	zend_bitset_incl(php_pcov_opcode_lut, ZEND_OP_DATA);
@@ -224,19 +261,35 @@ static zend_always_inline php_coverage_t* php_pcov_create(zend_execute_data *exe
 	return create;
 } /* }}} */
 
-static zend_always_inline int php_pcov_has(zend_string *filename, uint32_t lineno) { /* {{{ */
-	HashTable *table = zend_hash_find_ptr(&PCG(covered), filename);
+static zend_always_inline int php_pcov_has(const zend_op_array *op_array, uint32_t lineno) { /* {{{ */
+	HashTable **table_ptr = php_pcov_get_op_array_info_ptr(op_array);
+	HashTable *table = table_ptr ? *table_ptr : NULL;
 
-	if (UNEXPECTED(!table)) {
-		HashTable covering;
+	if (!table) {
+		zend_string *filename = op_array->filename;
 
-		zend_hash_init(&covering, 64, NULL, NULL, 0);
+		table = zend_hash_find_ptr(&PCG(covered), filename);
 
-		table = zend_hash_add_mem(
-			&PCG(covered), filename, &covering, sizeof(HashTable));
+		if (UNEXPECTED(!table)) {
+			HashTable covering;
 
- 		zend_hash_index_add_empty_element(table, lineno);
-		return 0;
+			zend_hash_init(&covering, 64, NULL, NULL, 0);
+
+			table = zend_hash_add_mem(
+				&PCG(covered), filename, &covering, sizeof(HashTable));
+
+			zend_hash_index_add_empty_element(table, lineno);
+
+			if (table_ptr) {
+				*table_ptr = table;
+			}
+
+			return 0;
+		}
+
+		if (table_ptr) {
+			*table_ptr = table;
+		}
 	}
 
 	if (EXPECTED(zend_hash_index_exists(table, lineno))) {
@@ -249,9 +302,9 @@ static zend_always_inline int php_pcov_has(zend_string *filename, uint32_t linen
 
 static zend_always_inline int php_pcov_trace(zend_execute_data *execute_data) { /* {{{ */
     if (PCG(enabled)) {
-		if (php_pcov_wants(EX(func)->op_array.filename) &&
+		if (php_pcov_wants_at_runtime(&EX(func)->op_array) &&
 			!php_pcov_ignored_opcode(EX(opline)->opcode) &&
-			!php_pcov_has(EX(func)->op_array.filename, EX(opline)->lineno)) {
+			!php_pcov_has(&EX(func)->op_array, EX(opline)->lineno)) {
 
 			php_coverage_t *coverage = php_pcov_create(execute_data);
 
@@ -348,6 +401,10 @@ PHP_MINIT_FUNCTION(pcov)
 	ZVAL_LONG(&php_pcov_covered,     PHP_PCOV_COVERED);
 
 	php_pcov_fill_ignored_opcode_lut();
+
+#if PHP_PCOV_USE_RID_CACHE
+	php_pcov_op_array_rid = zend_get_op_array_extension_handle("pcov");
+#endif
 
 	return SUCCESS;
 }
