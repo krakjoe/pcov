@@ -651,6 +651,26 @@ static void php_pcov_discover_file(zend_string *file, zval *return_value) { /* {
 					php_pcov_discover_code(&mem, function, &discovered);
 				}
 			} ZEND_HASH_FOREACH_END();
+
+#if PHP_VERSION_ID >= 80400
+			if (ce->num_hooked_props > 0) {
+				zend_property_info *prop;
+				ZEND_HASH_MAP_FOREACH_PTR(&ce->properties_info, prop) {
+					if (prop->hooks) {
+						for (uint32_t i = 0; i < ZEND_PROPERTY_HOOK_COUNT; i++) {
+							if (prop->hooks[i]) {
+								function = &prop->hooks[i]->op_array;
+								if (function->type == ZEND_USER_FUNCTION &&
+									function->filename &&
+									zend_string_equals(file, function->filename)) {
+									php_pcov_discover_code(&mem, function, &discovered);
+								}
+							}
+						}
+					}
+				} ZEND_HASH_FOREACH_END();
+			}
+#endif
 		} ZEND_HASH_FOREACH_END();
 	}
 
