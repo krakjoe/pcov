@@ -33,6 +33,7 @@
 # include "Zend/Optimizer/zend_cfg.h"
 # define PHP_PCOV_CFG 0
 #endif
+#include "zend_bitset.h"
 #include "zend_exceptions.h"
 #include "zend_vm.h"
 #include "zend_vm_opcodes.h"
@@ -64,6 +65,7 @@
 
 static zval php_pcov_uncovered;
 static zval php_pcov_covered;
+static zend_ulong php_pcov_opcode_lut[256 / ZEND_BITSET_ELM_SIZE];
 
 void (*zend_execute_ex_function)(zend_execute_data *execute_data);
 zend_op_array* (*zend_compile_file_function)(zend_file_handle *fh, int type) = NULL;
@@ -158,46 +160,48 @@ static zend_always_inline zend_bool php_pcov_wants(zend_string *filename) { /* {
 	return 0;
 } /* }}} */
 
-static zend_always_inline zend_bool php_pcov_ignored_opcode(zend_uchar opcode) { /* {{{ */
-	return
-	    opcode == ZEND_NOP ||
-	    opcode == ZEND_OP_DATA ||
-	    opcode == ZEND_FE_FREE ||
-	    opcode == ZEND_FREE ||
-	    opcode == ZEND_ASSERT_CHECK ||
-	    opcode == ZEND_VERIFY_RETURN_TYPE ||
-	    opcode == ZEND_RECV ||
-	    opcode == ZEND_RECV_INIT ||
-	    opcode == ZEND_RECV_VARIADIC ||
-	    opcode == ZEND_SEND_VAL ||
-	    opcode == ZEND_SEND_VAR_EX ||
-	    opcode == ZEND_SEND_REF ||
-	    opcode == ZEND_SEND_UNPACK ||
-	    opcode == ZEND_DECLARE_CONST ||
-	    opcode == ZEND_DECLARE_CLASS ||
+static void php_pcov_fill_ignored_opcode_lut(void) {
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_NOP);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_OP_DATA);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_FE_FREE);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_FREE);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_ASSERT_CHECK);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_VERIFY_RETURN_TYPE);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_RECV);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_RECV_INIT);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_RECV_VARIADIC);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_SEND_VAL);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_SEND_VAR_EX);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_SEND_REF);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_SEND_UNPACK);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_DECLARE_CONST);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_DECLARE_CLASS);
 #ifdef ZEND_DECLARE_INHERITED_CLASS
-	    opcode == ZEND_DECLARE_INHERITED_CLASS ||
-	    opcode == ZEND_DECLARE_INHERITED_CLASS_DELAYED ||
-	    opcode == ZEND_DECLARE_ANON_INHERITED_CLASS ||
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_DECLARE_INHERITED_CLASS);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_DECLARE_INHERITED_CLASS_DELAYED);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_DECLARE_ANON_INHERITED_CLASS);
 #else
-	    opcode == ZEND_DECLARE_CLASS_DELAYED ||
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_DECLARE_CLASS_DELAYED);
 #endif
-	    opcode == ZEND_DECLARE_FUNCTION ||
-	    opcode == ZEND_DECLARE_ANON_CLASS ||
-	    opcode == ZEND_FAST_RET ||
-	    opcode == ZEND_FAST_CALL ||
-	    opcode == ZEND_TICKS ||
-	    opcode == ZEND_EXT_STMT ||
-	    opcode == ZEND_EXT_FCALL_BEGIN ||
-	    opcode == ZEND_EXT_FCALL_END ||
-	    opcode == ZEND_EXT_NOP ||
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_DECLARE_FUNCTION);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_DECLARE_ANON_CLASS);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_FAST_RET);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_FAST_CALL);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_TICKS);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_EXT_STMT);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_EXT_FCALL_BEGIN);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_EXT_FCALL_END);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_EXT_NOP);
 #if PHP_VERSION_ID < 70400
-	    opcode == ZEND_VERIFY_ABSTRACT_CLASS ||
-	    opcode == ZEND_ADD_TRAIT ||
-	    opcode == ZEND_BIND_TRAITS ||
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_VERIFY_ABSTRACT_CLASS);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_ADD_TRAIT);
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_BIND_TRAITS);
 #endif
-	    opcode == ZEND_BIND_GLOBAL
-	;
+	zend_bitset_incl(php_pcov_opcode_lut, ZEND_BIND_GLOBAL);
+}
+
+static zend_always_inline zend_bool php_pcov_ignored_opcode(zend_uchar opcode) { /* {{{ */
+	return zend_bitset_in(php_pcov_opcode_lut, opcode);
 } /* }}} */
 
 static zend_always_inline zend_string* php_pcov_interned_string(zend_string *string) { /* {{{ */
@@ -346,6 +350,8 @@ PHP_MINIT_FUNCTION(pcov)
 
 	ZVAL_LONG(&php_pcov_uncovered,   PHP_PCOV_UNCOVERED);
 	ZVAL_LONG(&php_pcov_covered,     PHP_PCOV_COVERED);
+
+	php_pcov_fill_ignored_opcode_lut();
 
 	return SUCCESS;
 }
