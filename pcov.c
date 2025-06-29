@@ -327,10 +327,6 @@ void php_pcov_files_dtor(zval *zv) { /* {{{ */
 	efree(Z_PTR_P(zv));
 } /* }}} */
 
-void php_pcov_filename_dtor(zval *zv) { /* {{{ */
-	free(Z_PTR_P(zv));
-} /* }}} */
-
 /* {{{ PHP_MINIT_FUNCTION
  */
 PHP_MINIT_FUNCTION(pcov)
