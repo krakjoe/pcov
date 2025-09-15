@@ -1,0 +1,41 @@
+name: Build and Test
+on: [push, pull_request]
+jobs:
+  windows:
+    defaults:
+      run:
+        shell: cmd
+    strategy:
+      matrix:
+        version: ['7.2', '7.3', '7.4', '8.0', '8.1']
+        arch: [x64, x86]
+        ts: [nts, ts]
+        exclude:
+          - arch: x64
+            ts: nts
+          - arch: x86
+            ts: ts
+    runs-on: windows-2019
+    steps:
+      - name: Checkout pcov
+        uses: actions/checkout@v2
+      - name: Setup PHP
+        id: setup-php
+        uses: cmb69/setup-php-sdk@v0.2
+        with:
+          version: ${{matrix.version}}
+          arch: ${{matrix.arch}}
+          ts: ${{matrix.ts}}
+      - name: Enable Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{matrix.arch}}
+          toolset: ${{steps.setup-php.outputs.toolset}}
+      - name: phpize
+        run: phpize
+      - name: configure
+        run: configure --enable-pcov --with-prefix=${{steps.setup-php.outputs.prefix}}
+      - name: make
+        run: nmake
+      - name: test
+        run: nmake test TESTS="--show-diff -g FAIL,BORK,WARN,LEAK tests"
