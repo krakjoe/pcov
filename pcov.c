@@ -57,8 +57,56 @@
 #define GC_SET_REFCOUNT(ref, rc) (GC_REFCOUNT(ref) = (rc))
 #endif
 
+static zend_always_inline bool php_pcov_api_enabled(void) {
+	const char* env = getenv("PCOV_ENABLED");
+
+	if (env) {
+		size_t length = strlen(env);
+
+		if (length == 1) {
+			switch (*env) {
+				case '1':
+				case 'y': /* short yes */
+					return true;
+				case '0':
+				case 'n': /* short no */
+					return false;
+			}
+			/* all other characters are assumed false */
+			return false;
+		}
+
+		if (length == 2) {
+			if (strncasecmp(env, ZEND_STRL("on")) == SUCCESS) {
+				return true;
+			} else if (strncasecmp(env, ZEND_STRL("no")) == SUCCESS) {
+				return false;
+			}
+
+			/* all other strings are assumed false */
+			return false;
+		}
+
+		if (length == 3) {
+			if (strncasecmp(env, ZEND_STRL("off")) == SUCCESS) {
+				return false;
+			} else if (strncasecmp(env, ZEND_STRL("yes")) == SUCCESS) {
+				return true;
+			}
+
+			/* all other strings are assumed false */
+			return false;
+		}
+
+		/* all other lengths are assumed false */
+		return false;
+	}
+
+	return INI_BOOL("pcov.enabled");
+}
+
 #define PHP_PCOV_API_ENABLED_GUARD() do { \
-	if (!INI_BOOL("pcov.enabled")) { \
+	if (!php_pcov_api_enabled()) { \
 		return; \
 	} \
 } while (0);
@@ -339,7 +387,7 @@ PHP_MINIT_FUNCTION(pcov)
 
 	REGISTER_INI_ENTRIES();
 
-	if (INI_BOOL("pcov.enabled")) {
+	if (php_pcov_api_enabled()) {
 		zend_execute_ex_function   = zend_execute_ex;
 		zend_execute_ex            = php_pcov_execute_ex;
 	}
@@ -357,7 +405,7 @@ PHP_MINIT_FUNCTION(pcov)
  */
 PHP_MSHUTDOWN_FUNCTION(pcov)
 {
-	if (INI_BOOL("pcov.enabled")) {
+	if (php_pcov_api_enabled()) {
 		zend_execute_ex   = zend_execute_ex_function;
 	}
 
@@ -427,7 +475,7 @@ PHP_RINIT_FUNCTION(pcov)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
 
-	if (!INI_BOOL("pcov.enabled")) {
+	if (!php_pcov_api_enabled()) {
 		return SUCCESS;
 	}
 
@@ -464,7 +512,7 @@ PHP_RINIT_FUNCTION(pcov)
  */
 PHP_RSHUTDOWN_FUNCTION(pcov)
 {
-	if (!INI_BOOL("pcov.enabled") || CG(unclean_shutdown)) {
+	if (!php_pcov_api_enabled() || CG(unclean_shutdown)) {
 		return SUCCESS;
 	}
 
@@ -506,7 +554,7 @@ PHP_MINFO_FUNCTION(pcov)
 
 	php_info_print_table_header(2,
 		"PCOV support",
-		INI_BOOL("pcov.enabled")  ? "Enabled" : "Disabled");
+		php_pcov_api_enabled()  ? "Enabled" : "Disabled");
 	php_info_print_table_row(2,
 		"PCOV version",
 		PHP_PCOV_VERSION);
@@ -862,6 +910,16 @@ PHP_NAMED_FUNCTION(php_pcov_memory)
 	} while ((arena = arena->prev));
 } /* }}} */
 
+/* {{{ bool \pcov\enabled(void) */
+PHP_NAMED_FUNCTION(php_pcov_enabled)
+{
+	if (zend_parse_parameters_none() != SUCCESS) {
+		return;
+	}
+
+	RETURN_BOOL(php_pcov_api_enabled());
+} /* }}} */
+
 /* {{{ */
 ZEND_BEGIN_ARG_INFO_EX(php_pcov_collect_arginfo, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO(0, type, IS_LONG, 0)
@@ -886,6 +944,7 @@ const zend_function_entry php_pcov_functions[] = {
 	ZEND_NS_FENTRY("pcov", clear,      php_pcov_clear,         php_pcov_clear_arginfo, 0)
 	ZEND_NS_FENTRY("pcov", waiting,    php_pcov_waiting,       php_pcov_no_arginfo, 0)
 	ZEND_NS_FENTRY("pcov", memory,     php_pcov_memory,        php_pcov_no_arginfo, 0)
+	ZEND_NS_FENTRY("pcov", enabled,    php_pcov_enabled,       php_pcov_no_arginfo, 0)
 	PHP_FE_END
 };
 /* }}} */
