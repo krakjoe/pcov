@@ -495,6 +495,10 @@ PHP_RINIT_FUNCTION(pcov)
 	CG(compiler_options) |= ZEND_COMPILE_NO_JUMPTABLES;
 #endif
 
+#ifdef ZEND_COMPILE_EXTENDED_STMT
+	CG(compiler_options) |= ZEND_COMPILE_EXTENDED_STMT;
+#endif
+
 	if  (!zend_compile_file_function) {
 		zend_compile_file_function = zend_compile_file;
 		zend_compile_file          = php_pcov_compile_file;
