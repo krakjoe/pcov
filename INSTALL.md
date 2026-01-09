@@ -24,7 +24,7 @@ Use `develop` branch for development, use `release` branch for last stable relea
 
 **Binary distributions**
 
-  * **Microsoft Windows**: dll available on [https://pecl.php.net/package/pcov](pecl)
+  * **Microsoft Windows**: dll available on [https://pecl.php.net/package/pcov](https://pecl.php.net/package/pcov)
 
   * **Fedora** 29 and up: use the [php-pecl-pcov](https://packages.fedoraproject.org/pkgs/php-pecl-pcov/php-pecl-pcov/) package
 
