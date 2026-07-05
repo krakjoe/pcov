@@ -40,6 +40,14 @@
 
 #include "php_pcov.h"
 
+/* PHP 8.6 removed the INI_STR()/INI_INT()/INI_BOOL() accessor macros and
+ * zend_ini_string() now returns const char*. Restore them for this build. */
+#if PHP_VERSION_ID >= 80600
+# define INI_STR(name)  ((char*) zend_ini_string((name), strlen(name), 0))
+# define INI_INT(name)  ((zend_long) zend_ini_long((name), strlen(name), 0))
+# define INI_BOOL(name) ((bool) zend_ini_long((name), strlen(name), 0))
+#endif
+
 #define PCOV_FILTER_ALL     0
 #define PCOV_FILTER_INCLUDE 1
 #define PCOV_FILTER_EXCLUDE 2
