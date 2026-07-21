@@ -39,6 +39,8 @@
 #include "zend_vm_opcodes.h"
 
 #include "php_pcov.h"
+/* needed for PHP_VERSION_ID < 80000 */
+#include <stdbool.h>
 
 #define PCOV_FILTER_ALL     0
 #define PCOV_FILTER_INCLUDE 1
