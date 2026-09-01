@@ -353,6 +353,19 @@ zend_op_array* php_pcov_compile_file(zend_file_handle *fh, int type) { /* {{{ */
 void php_pcov_execute_ex(zend_execute_data *execute_data) { /* {{{ */
 	int zrc		= 0;
 
+#ifdef ZEND_CHECK_STACK_LIMIT
+	/* Mirrors the prologue of the engine's own execute_ex (Zend/zend_vm_execute.skl).
+	 * Overriding zend_execute_ex replaces that function wholesale, which would
+	 * otherwise drop the stack limit check and turn a catchable Error into a
+	 * segfault on deep recursion. */
+	if (UNEXPECTED(zend_call_stack_overflowed(EG(stack_limit)))) {
+		zend_call_stack_size_error();
+		/* No opline was executed before exception */
+		EG(opline_before_exception) = NULL;
+		/* Fall through to handle exception below. */
+	}
+#endif /* ZEND_CHECK_STACK_LIMIT */
+
 	while (1) {
 		zrc = php_pcov_trace(execute_data);
 
