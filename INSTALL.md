@@ -1,7 +1,7 @@
 Requirements
 ============
 
-  * PHP 7.1+
+  * PHP 8.6+ with opcode observer support
 
 Installation
 ============

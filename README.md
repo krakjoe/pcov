@@ -101,20 +101,36 @@ Interoperability
 
 When PCOV is enabled by configuration `pcov.enabled=1`:
 
-  * interoperability with Xdebug is not possible
-  * interoperability with phpdbg is not possible
-  * interoperability with Blackfire profiler is not possible
+  * PHP's function and tracing JIT modes remain available
+  * coverage is recorded through PHP's opcode observer API
+  * interoperability with Xdebug is not supported
+  * interoperability with phpdbg is not supported
+  * interoperability with Blackfire profiler is not supported
 
-At an internals level, the executor function is overriden by pcov, so any extension or SAPI which does the same will be broken.
+Extensions or SAPIs which replace the executor may still be incompatible.
+
+The patched PHP runtime must preserve opcode-observer metadata in shared JIT
+code. Request-local closure and trait-method copies cannot survive FPM worker
+replacement; build-php's `0009-Fix-JIT-opcode-observer-metadata-lifetime.patch`
+resolves them to OPcache's persistent copy. `tests/jit-fpm.phpt` checks coverage
+across recycled workers with different heap layouts, alongside ordinary FPM
+request reuse, with JIT disabled and with function and tracing JIT enabled.
+
+PCOV disables OPcache's constant-return function inlining (optimizer pass 16)
+while enabled. Otherwise, OPcache can replace a method call with its literal
+return value and leave the method falsely uncovered. Other configured optimizer
+passes, opcode caching, and JIT remain available. Coverage-enabled processes use
+a separate OPcache file-cache identity so they cannot reuse inlined opcodes
+written by processes with PCOV disabled.
 
 When PCOV is disabled by configuration `pcov.enabled=0`:
 
-  * PCOV is zero cost - code runs at full speed
+  * PCOV registers no callback and allocates no request memory
   * Xdebug may be loaded
   * phpdbg may be executed
   * Blackfire probe may be loaded
 
-At an internals level, the executor function is untouched, and pcov allocates no memory.
+At an internals level, PHP's opcode-observer guard remains a not-taken branch.
 
 Differences in Reporting
 ========================
