@@ -39,6 +39,8 @@
 #include "zend_vm_opcodes.h"
 
 #include "php_pcov.h"
+/* needed for PHP_VERSION_ID < 80000 */
+#include <stdbool.h>
 
 #define PCOV_FILTER_ALL     0
 #define PCOV_FILTER_INCLUDE 1
@@ -55,6 +57,16 @@
 #define php_pcre_pce_incref(c) (c)->refcount++
 #define php_pcre_pce_decref(c) (c)->refcount--
 #define GC_SET_REFCOUNT(ref, rc) (GC_REFCOUNT(ref) = (rc))
+#endif
+
+#if PHP_VERSION_ID < 80600
+#if PHP_VERSION_ID < 80300
+#define zend_ini_bool_literal(name) ((zend_bool)zend_ini_long((name), sizeof("" name) - 1, 0))
+#else
+#define zend_ini_bool_literal(name) zend_ini_parse_bool(zend_ini_str((name), sizeof("" name) - 1, 0))
+#endif
+#define zend_ini_long_literal(name) zend_ini_long((name), sizeof("" name) - 1, 0)
+#define zend_ini_string_literal(name) zend_ini_string((name), sizeof("" name) - 1, 0)
 #endif
 
 static zend_always_inline bool php_pcov_api_enabled(void) {
@@ -102,7 +114,7 @@ static zend_always_inline bool php_pcov_api_enabled(void) {
 		return false;
 	}
 
-	return INI_BOOL("pcov.enabled");
+	return zend_ini_bool_literal("pcov.enabled");
 }
 
 #define PHP_PCOV_API_ENABLED_GUARD() do { \
@@ -423,7 +435,7 @@ const char *php_pcov_directory_defaults[] = { /* {{{ */
 	NULL
 }; /* }}} */
 
-static  void php_pcov_setup_directory(char *directory) { /* {{{ */
+static  void php_pcov_setup_directory(const char *directory) { /* {{{ */
 	char        realpath[MAXPATHLEN];
 	zend_stat_t statbuf;
 
@@ -448,7 +460,7 @@ static  void php_pcov_setup_directory(char *directory) { /* {{{ */
 	PCG(directory) = zend_string_init(directory, strlen(directory), 0);
 } /* }}} */
 
-static zend_always_inline void php_pcov_setup_exclude(char *exclude) { /* {{{ */
+static zend_always_inline void php_pcov_setup_exclude(const char *exclude) { /* {{{ */
 	zend_string *pattern;
 
 	if (!exclude || !*exclude) {
@@ -479,17 +491,17 @@ PHP_RINIT_FUNCTION(pcov)
 		return SUCCESS;
 	}
 
-	PCG(mem) = zend_arena_create(INI_INT("pcov.initial.memory"));
+	PCG(mem) = zend_arena_create(zend_ini_long_literal("pcov.initial.memory"));
 
-	zend_hash_init(&PCG(files),      INI_INT("pcov.initial.files"), NULL, php_pcov_files_dtor, 0);
-	zend_hash_init(&PCG(waiting),    INI_INT("pcov.initial.files"), NULL, NULL, 0);
-	zend_hash_init(&PCG(ignores),    INI_INT("pcov.initial.files"), NULL, NULL, 0);
-	zend_hash_init(&PCG(wants),      INI_INT("pcov.initial.files"), NULL, NULL, 0);
-	zend_hash_init(&PCG(discovered), INI_INT("pcov.initial.files"), NULL, ZVAL_PTR_DTOR, 0);
-	zend_hash_init(&PCG(covered),    INI_INT("pcov.initial.files"), NULL, php_pcov_covered_dtor, 0);
+	zend_hash_init(&PCG(files),      zend_ini_long_literal("pcov.initial.files"), NULL, php_pcov_files_dtor, 0);
+	zend_hash_init(&PCG(waiting),    zend_ini_long_literal("pcov.initial.files"), NULL, NULL, 0);
+	zend_hash_init(&PCG(ignores),    zend_ini_long_literal("pcov.initial.files"), NULL, NULL, 0);
+	zend_hash_init(&PCG(wants),      zend_ini_long_literal("pcov.initial.files"), NULL, NULL, 0);
+	zend_hash_init(&PCG(discovered), zend_ini_long_literal("pcov.initial.files"), NULL, ZVAL_PTR_DTOR, 0);
+	zend_hash_init(&PCG(covered),    zend_ini_long_literal("pcov.initial.files"), NULL, php_pcov_covered_dtor, 0);
 
-	php_pcov_setup_directory(INI_STR("pcov.directory"));
-	php_pcov_setup_exclude(INI_STR("pcov.exclude"));
+	php_pcov_setup_directory(zend_ini_string_literal("pcov.directory"));
+	php_pcov_setup_exclude(zend_ini_string_literal("pcov.exclude"));
 
 #ifdef ZEND_COMPILE_NO_JUMPTABLES
 	CG(compiler_options) |= ZEND_COMPILE_NO_JUMPTABLES;
@@ -547,8 +559,8 @@ PHP_RSHUTDOWN_FUNCTION(pcov)
 PHP_MINFO_FUNCTION(pcov)
 {
 	char info[64];
-	char *directory = INI_STR("pcov.directory");
-	char *exclude   = INI_STR("pcov.exclude");
+	const char *directory = zend_ini_string_literal("pcov.directory");
+	const char *exclude   = zend_ini_string_literal("pcov.exclude");
 
 	php_info_print_table_start();
 
@@ -567,13 +579,13 @@ PHP_MINFO_FUNCTION(pcov)
 
 	snprintf(info, sizeof(info),
 		ZEND_LONG_FMT " bytes",
-		(zend_long) INI_INT("pcov.initial.memory"));
+		zend_ini_long_literal("pcov.initial.memory"));
 	php_info_print_table_row(2,
 		"pcov.initial.memory", info);
 
 	snprintf(info, sizeof(info),
 		ZEND_LONG_FMT,
-		(zend_long) INI_INT("pcov.initial.files"));
+		zend_ini_long_literal("pcov.initial.files"));
 	php_info_print_table_row(2,
 		"pcov.initial.files", info);
 
@@ -862,7 +874,7 @@ PHP_NAMED_FUNCTION(php_pcov_clear)
 
 	PCG(mem) =
 		zend_arena_create(
-			INI_INT("pcov.initial.memory"));
+			zend_ini_long_literal("pcov.initial.memory"));
 
 	PCG(start) = NULL;
 	PCG(last) = NULL;
