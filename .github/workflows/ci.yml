@@ -1,0 +1,89 @@
+name: Build and Test
+on: [push, pull_request]
+jobs:
+  windows:
+    defaults:
+      run:
+        shell: cmd
+    strategy:
+      matrix:
+        version: ['8.0', '8.1', '8.2', '8.3', '8.4']
+        arch: [x64, x86]
+        ts: [ts, nts]
+    runs-on: windows-latest
+    steps:
+      - name: Checkout pcov
+        uses: actions/checkout@v4
+      - name: Extract Version
+        shell: powershell
+        run: |
+          chcp 65001
+          $r = Select-String -Path php_pcov.h -Pattern 'PHP_PCOV_VERSION\s+"(.*)"'
+          $s = $r.Matches[0].Groups[1]
+          echo "$s"
+          $extension_version = 'EXTENSION_VERSION=' + $s
+          echo $extension_version >> $env:GITHUB_ENV
+      - name: Setup PHP
+        id: setup-php
+        uses: php/setup-php-sdk@v0.10
+        with:
+            version: ${{matrix.version}}
+            arch: ${{matrix.arch}}
+            ts: ${{matrix.ts}}
+      - name: Enable Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{matrix.arch}}
+          toolset: ${{steps.setup-php.outputs.toolset}}
+      - name: phpize
+        run: phpize
+      - name: configure
+        run: configure --enable-pcov --with-prefix=${{steps.setup-php.outputs.prefix}}
+      - name: make
+        run: nmake
+      - name: test
+        run: nmake test TESTS="-g FAIL,SKIP --show-diff tests"
+      - name: Define Module Env
+        shell: powershell
+        run: |
+          chcp 65001
+
+          $dir = (Get-Location).Path + '\'
+          if ('x64' -eq '${{matrix.arch}}') { $dir = $dir + 'x64\' }
+          $dir = $dir + 'Release'
+          if ('ts' -eq '${{matrix.ts}}') { $dir = $dir + '_TS' }
+
+          $artifact_name = 'php_pcov-${{env.EXTENSION_VERSION}}-${{matrix.version}}'
+
+          if ('ts' -eq '${{matrix.ts}}') { $artifact_name = $artifact_name + '-ts' }
+          if ('nts' -eq '${{matrix.ts}}') { $artifact_name = $artifact_name + '-nts' }
+
+          if ('8.0' -eq '${{matrix.version}}') { $artifact_name = $artifact_name + '-vs16' }
+          if ('8.1' -eq '${{matrix.version}}') { $artifact_name = $artifact_name + '-vs16' }
+          if ('8.2' -eq '${{matrix.version}}') { $artifact_name = $artifact_name + '-vs16' }
+          if ('8.3' -eq '${{matrix.version}}') { $artifact_name = $artifact_name + '-vs16' }
+          if ('8.4' -eq '${{matrix.version}}') { $artifact_name = $artifact_name + '-vs17' }
+
+          if ('x64' -eq '${{matrix.arch}}') { $artifact_name = $artifact_name + '-x64' }
+          if ('x86' -eq '${{matrix.arch}}') { $artifact_name = $artifact_name + '-x86' }
+
+          $extension_artifact_name = "ARTIFACT_NAME=" + $artifact_name
+          echo $extension_artifact_name >> $env:GITHUB_ENV
+
+          $from = $dir + '\php_pcov.dll'
+          $to = $from + ".zip"
+          Compress-Archive $from $to
+          $extension_artifact = "ARTIFACT=" + $from
+          echo $extension_artifact >> $env:GITHUB_ENV
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+            name: ${{env.ARTIFACT_NAME}}
+            path: ${{env.ARTIFACT}}
+      - name: Publish Binaries to Release
+        if: ${{ startsWith(github.ref, 'refs/tags') }}
+        uses: svenstaro/upload-release-action@v2
+        with:
+            asset_name: ${{env.ARTIFACT_NAME}}.zip
+            file: ${{env.ARTIFACT}}.zip
